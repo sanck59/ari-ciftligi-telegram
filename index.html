@@ -1,220 +1,137 @@
 <!DOCTYPE html>
-<html lang="tr">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<html lang="tr"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Arı Çiftliği</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    background: var(--tg-theme-bg-color, #eaf6d8);
-    color: var(--tg-theme-text-color, #2f4f1f);
-    font-family: -apple-system, Roboto, Helvetica, Arial, sans-serif;
-    overscroll-behavior: none;
-  }
-  #app { display: flex; flex-direction: column; height: 100%; }
-  h1 { text-align: center; font-size: 18px; margin: 10px 0; color: #4a7c2c; }
-  .seed-bar { display: flex; justify-content: center; gap: 8px; padding: 4px 8px 10px; }
-  .seed-btn {
-    display: flex; flex-direction: column; align-items: center;
-    background: #fff; border: 2px solid transparent; border-radius: 12px;
-    padding: 6px 10px; font-size: 12px; cursor: pointer;
-  }
-  .seed-btn.active { border-color: #f5a623; background: #fff3d6; }
-  .seed-btn .icon { font-size: 20px; }
-  .grid {
-    flex: 1; display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 8px; padding: 8px 12px 24px; overflow-y: auto;
-  }
-  .plot {
-    aspect-ratio: 1 / 1; border-radius: 14px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    cursor: pointer; user-select: none; transition: transform 0.1s ease;
-  }
-  .plot:active { transform: scale(0.95); }
-  .plot.locked { background: #c9c9c9; }
-  .plot.locked .lock { font-size: 22px; }
-  .plot.empty { background: #8b5a2b; border: 2px solid #6e451f; }
-  .plot.empty .plus { font-size: 26px; color: #fff; font-weight: bold; }
-  .plot.growing { background: #a3d977; }
-  .plot.ready { background: #ffe066; border: 2px solid #f5a623; }
-  .plot .icon { font-size: 24px; }
-  .plot .timer { font-size: 10px; margin-top: 2px; color: #2f4f1f; }
-  .plot .ready-text { font-size: 10px; margin-top: 2px; font-weight: bold; color: #a05a00; }
-  #toast {
-    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.8); color: #fff; padding: 10px 18px;
-    border-radius: 20px; font-size: 13px; opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease;
-  }
-  #toast.show { opacity: 1; }
-</style>
-</head>
-<body>
-<div id="app">
-  <h1>Çiftlik — Arazi</h1>
-  <div class="seed-bar" id="seedBar"></div>
-  <div class="grid" id="grid"></div>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:#2f6b2a;font-family:"Trebuchet MS",Verdana,sans-serif;overflow:hidden}
+#game{position:relative;height:100dvh;max-width:480px;margin:0 auto;overflow:hidden;background:linear-gradient(#3f8f3a 0,#4c9a3f 26%,#8fd14a 38%,#5fb02c 100%)}
+.abs{position:absolute}
+#path{position:absolute;left:-10%;right:-10%;top:23%;height:15%;background:#ecd08f;border-radius:50%}
+#fence{position:absolute;left:0;right:0;top:35%;height:14px;background:repeating-linear-gradient(90deg,#7a4a22 0 7px,transparent 7px 20px);border-top:4px solid #a56b33}
+#river{position:absolute;left:0;right:0;bottom:0;height:17%;background:linear-gradient(#5cbcee,#2f8fd0);border-radius:55% 55% 0 0/30% 30% 0 0}
+.dec{position:absolute;line-height:1}
+#hud{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;display:flex;align-items:center;z-index:5}
+.av{width:46px;height:46px;border-radius:50%;background:#3b2415;border:3px solid #f6c344;display:grid;place-items:center;color:#fff;font-weight:800;font-size:20px;z-index:2}
+.pill{height:34px;border-radius:17px;background:linear-gradient(#a8622a,#7a4218);border:2px solid #f6c344;color:#fff8e1;font-weight:800;display:flex;align-items:center;gap:6px;padding:0 14px}
+#nmp{margin-left:-22px;padding-left:28px;font-size:14px}
+#cnp{margin-left:10px}
+.rb{width:52px;height:52px;border-radius:50%;background:radial-gradient(#ffe9a0,#f4b731);border:3px solid #fff2b8;box-shadow:0 3px 0 #b97a12;display:grid;place-items:center;font-size:26px;position:relative;cursor:pointer}
+.rb small{position:absolute;bottom:-10px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:800;color:#fff;background:#7a4218;padding:1px 7px;border-radius:8px;border:1px solid #f6c344;white-space:nowrap}
+.rb:active{transform:scale(.94)}
+#side{position:absolute;right:10px;top:calc(env(safe-area-inset-top,0px) + 66px);display:flex;flex-direction:column;gap:20px;z-index:5}
+#menu{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 20px);left:0;right:0;display:flex;justify-content:space-around;padding:0 6px;z-index:5}
+#field{position:absolute;left:50%;top:41%;width:342px;height:180px;transform:translateX(-50%)}
+.plot{position:absolute;width:76px;height:38px;cursor:pointer;filter:drop-shadow(0 4px 0 rgba(60,30,10,.35))}
+.tile{position:absolute;inset:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.locked .tile{background:radial-gradient(circle at 50% 40%,#b9ee78,#78c53c)}
+.soil .tile{background:linear-gradient(#ab6e37,#7d4c22)}
+.crop{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);text-align:center;line-height:1;pointer-events:none}
+.crop .e{font-size:26px;display:block}
+.crop .tm{font-size:9px;background:#3b2415;color:#fff;border-radius:6px;padding:1px 4px;margin-top:1px;display:inline-block}
+.bub{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);width:26px;height:26px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:14px;box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.ready .e{animation:b 1s infinite}
+@keyframes b{50%{transform:translateY(-5px)}}
+#ov{position:absolute;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:50}
+#ov.on{display:flex}
+.wrap{position:relative;width:88%;max-height:74%;display:flex}
+.box{width:100%;overflow:auto;background:#fff1c9;border:6px solid #c8792f;border-radius:20px;padding:36px 12px 14px;box-shadow:0 8px 0 rgba(0,0,0,.3)}
+.ttl{position:absolute;left:50%;top:-18px;transform:translateX(-50%);background:linear-gradient(#e89a45,#c8792f);color:#fff;font-weight:800;padding:8px 26px;border-radius:14px;border:3px solid #8a4b18;font-size:18px;text-shadow:0 2px 0 #7a4218;white-space:nowrap;z-index:2}
+.x{position:absolute;right:-10px;top:-14px;width:34px;height:34px;border-radius:50%;background:#f28a30;color:#fff;border:3px solid #fff2b8;font-weight:900;z-index:2}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.it{background:linear-gradient(#ffd45c,#f6a51c);border-radius:14px;padding:8px 4px;text-align:center;font-weight:800;color:#5a3210;border:3px solid transparent}
+.it .e{font-size:30px}
+.it.sel{border-color:#3aa23a}
+.row{display:flex;align-items:center;gap:8px;background:#ffe7a8;border:2px solid #e3b25a;border-radius:14px;padding:8px;margin-bottom:8px;color:#5a3210;font-weight:700}
+.row .t{flex:1;font-size:13px}
+.btn{background:linear-gradient(#8fe04a,#4bb51f);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-weight:800;box-shadow:0 3px 0 #2f7d12}
+.btn:disabled{background:#bbb;box-shadow:0 3px 0 #888}
+.hint{font-size:12px;color:#7a4b1d;text-align:center;margin:10px 0 0}
+#toast{position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:9px 16px;border-radius:18px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:60;white-space:nowrap}
+#toast.on{opacity:1}
+</style></head><body>
+<div id="game">
+ <div id="path"></div><div id="fence"></div><div id="river"></div>
+ <div class="dec" style="left:-2%;top:4%;font-size:54px">🌳</div>
+ <div class="dec" style="right:14%;top:5%;font-size:46px">🌳</div>
+ <div class="dec" style="left:46%;top:17%;font-size:30px">🌻🌻</div>
+ <div class="dec" style="right:12%;top:24%;font-size:34px">🧑‍🌾</div>
+ <div class="dec" style="right:2%;bottom:22%;font-size:30px">🌼</div>
+ <svg class="abs" style="left:2%;top:9%;width:36%" viewBox="0 0 120 100"><rect x="18" y="45" width="84" height="50" rx="3" fill="#d9403a"/><rect x="18" y="45" width="84" height="6" fill="#fff" opacity=".6"/><polygon points="6,50 60,8 114,50" fill="#f2b632" stroke="#c98a12" stroke-width="4" stroke-linejoin="round"/><path d="M46 95V68q14-14 28 0v27z" fill="#fff"/><rect x="26" y="58" width="14" height="12" fill="#fff"/></svg>
+ <div id="hud">
+  <div class="av" id="av">Ç</div><div class="pill" id="nmp"><span id="nm">ÇİFTÇİ</span></div>
+  <div class="pill" id="cnp">🪙 <span id="coin">0</span></div>
+ </div>
+ <div id="side">
+  <div class="rb" onclick="toast('Sıralama yakında')">🏆<small>Sıralama</small></div>
+  <div class="rb" onclick="toast('Çalma yakında')">✋<small>Çal</small></div>
+ </div>
+ <div id="field"></div>
+ <div id="menu">
+  <div class="rb" onclick="show('bag')">🎒<small>Çanta</small></div>
+  <div class="rb" onclick="show('store')">🏚️<small>Depo</small></div>
+  <div class="rb" onclick="show('orders')">🚚<small>Sipariş</small></div>
+  <div class="rb" onclick="show('shop')">🏪<small>Mağaza</small></div>
+  <div class="rb" onclick="show('gift')">🎁<small>Ödül</small></div>
+ </div>
+ <div id="ov"><div class="wrap"><div class="ttl" id="ttl"></div><button class="x" onclick="closeM()">✕</button><div class="box" id="bx"></div></div></div>
+ <div id="toast"></div>
 </div>
-<div id="toast"></div>
-
 <script>
-const tg = window.Telegram ? window.Telegram.WebApp : null;
-if (tg) { tg.ready(); tg.expand(); }
-
-const TOTAL_PLOTS = 20;
-
-const SEED_TYPES = {
-  misir:    { id: 'misir',    name: 'Mısır',    icon: '🌽', growTimeSec: 60 * 30, yieldAmount: 3 },
-  kahve:    { id: 'kahve',    name: 'Kahve',    icon: '☕', growTimeSec: 60 * 45, yieldAmount: 2 },
-  aycicegi: { id: 'aycicegi', name: 'Ayçiçeği', icon: '🌻', growTimeSec: 60 * 20, yieldAmount: 4 },
-};
-
-const STATE = { LOCKED: 'locked', EMPTY: 'empty', GROWING: 'growing', READY: 'ready' };
-
-function createInitialPlots() {
-  return Array.from({ length: TOTAL_PLOTS }, (_, i) => ({
-    id: i,
-    state: i < 8 ? STATE.EMPTY : STATE.LOCKED,
-    seedId: null,
-    plantedAt: null,
-    unlockCost: 5000 + i * 2500,
-  }));
-}
-
-let plots = loadState() || createInitialPlots();
-let selectedSeed = 'misir';
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem('farm_plots');
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
-}
-function saveState() {
-  try { localStorage.setItem('farm_plots', JSON.stringify(plots)); } catch (e) {}
-}
-
-function formatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = Math.floor(totalSeconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-}
-
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 2000);
-}
-
-function renderSeedBar() {
-  const bar = document.getElementById('seedBar');
-  bar.innerHTML = '';
-  Object.values(SEED_TYPES).forEach(seed => {
-    const btn = document.createElement('div');
-    btn.className = 'seed-btn' + (selectedSeed === seed.id ? ' active' : '');
-    btn.innerHTML = `<span class="icon">${seed.icon}</span><span>${seed.name}</span>`;
-    btn.onclick = () => { selectedSeed = seed.id; renderSeedBar(); };
-    bar.appendChild(btn);
-  });
-}
-
-function renderGrid() {
-  const grid = document.getElementById('grid');
-  grid.innerHTML = '';
-  const now = Date.now();
-
-  plots.forEach(plot => {
-    const cell = document.createElement('div');
-    cell.className = 'plot ' + plot.state;
-
-    if (plot.state === STATE.LOCKED) {
-      cell.innerHTML = `<span class="lock">🔒</span>`;
-    } else if (plot.state === STATE.EMPTY) {
-      cell.innerHTML = `<span class="plus">+</span>`;
-    } else if (plot.state === STATE.GROWING) {
-      const seed = SEED_TYPES[plot.seedId];
-      const remaining = Math.max(0, seed.growTimeSec - (now - plot.plantedAt) / 1000);
-      cell.innerHTML = `<span class="icon">${seed.icon}</span><span class="timer">${formatTime(remaining)}</span>`;
-    } else if (plot.state === STATE.READY) {
-      const seed = SEED_TYPES[plot.seedId];
-      cell.innerHTML = `<span class="icon">${seed.icon}</span><span class="ready-text">Hazır!</span>`;
-    }
-
-    cell.onclick = () => handlePlotClick(plot.id);
-    grid.appendChild(cell);
-  });
-}
-
-function handlePlotClick(plotId) {
-  const plot = plots.find(p => p.id === plotId);
-
-  if (plot.state === STATE.LOCKED) {
-    if (confirm(`Bu parseli açmak için ${plot.unlockCost} para gerekiyor. Açmak ister misin?`)) {
-      unlockPlot(plotId);
-    }
-    return;
-  }
-  if (plot.state === STATE.EMPTY) { plantSeed(plotId, selectedSeed); return; }
-  if (plot.state === STATE.READY) { harvestPlot(plotId); return; }
-  if (plot.state === STATE.GROWING) {
-    const seed = SEED_TYPES[plot.seedId];
-    const remaining = Math.max(0, seed.growTimeSec - (Date.now() - plot.plantedAt) / 1000);
-    showToast(`Büyüyor — kalan süre: ${formatTime(remaining)}`);
-  }
-}
-
-function unlockPlot(plotId) {
-  const plot = plots.find(p => p.id === plotId);
-  plot.state = STATE.EMPTY;
-  saveState();
-  renderGrid();
-}
-
-function plantSeed(plotId, seedId) {
-  const plot = plots.find(p => p.id === plotId);
-  plot.state = STATE.GROWING;
-  plot.seedId = seedId;
-  plot.plantedAt = Date.now();
-  saveState();
-  renderGrid();
-}
-
-function harvestPlot(plotId) {
-  const plot = plots.find(p => p.id === plotId);
-  const seed = SEED_TYPES[plot.seedId];
-
-  plot.state = STATE.EMPTY;
-  plot.seedId = null;
-  plot.plantedAt = null;
-  saveState();
-  renderGrid();
-
-  showToast(`${seed.icon} ${seed.yieldAmount} adet ${seed.name} kazandın!`);
-  if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-}
-
-setInterval(() => {
-  let changed = false;
-  const now = Date.now();
-  plots.forEach(plot => {
-    if (plot.state === STATE.GROWING) {
-      const seed = SEED_TYPES[plot.seedId];
-      if ((now - plot.plantedAt) / 1000 >= seed.growTimeSec) {
-        plot.state = STATE.READY;
-        changed = true;
-      }
-    }
-  });
-  if (changed) saveState();
-  renderGrid();
-}, 1000);
-
-renderSeedBar();
-renderGrid();
-</script>
-</body>
-</html>
+const tg=window.Telegram&&Telegram.WebApp;
+try{if(tg){tg.ready();tg.expand();tg.setHeaderColor&&tg.setHeaderColor('#3f8f3a')}}catch(e){}
+const $=id=>document.getElementById(id);
+const SEEDS={
+ aycicegi:{n:'Ayçiçeği',e:'🌻',min:5,y:4,price:8,rate:5},
+ misir:{n:'Mısır',e:'🌽',min:15,y:6,price:6,rate:4},
+ kahve:{n:'Kahve',e:'☕',min:30,y:8,price:10,rate:7}};
+const K='farm_v2',R=[10,10,20,20,30];
+function mk(n,e){const c=Object.keys(SEEDS)[Math.floor(Math.random()*3)],need=6+Math.floor(Math.random()*9);return{n,e,c,need,rw:Math.round(need*SEEDS[c].rate*1.2)}}
+function fresh(){return{coins:200,sel:'misir',seeds:{misir:5,kahve:3,aycicegi:3},crops:{},
+ plots:Array.from({length:20},(_,i)=>({s:i<8?'e':'l',id:null,at:0,cost:100+Math.max(0,i-8)*60})),
+ orders:[mk('Restoran','🍽️'),mk('Okul','🏫'),mk('Otel','🏨'),mk('AVM','🏬')],daily:{last:'',streak:0}}}
+let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S||!S.plots||S.plots.length!=20)S=fresh();
+function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1800)}
+function ask(m,cb){if(tg&&tg.showConfirm&&tg.isVersionAtLeast&&tg.isVersionAtLeast('6.2'))tg.showConfirm(m,ok=>ok&&cb());else if(confirm(m))cb()}
+function fmt(s){s=Math.max(0,Math.ceil(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+const F=$('field'),els=[];
+S.plots.forEach((p,i)=>{const r=Math.floor(i/5),c=i%5,d=document.createElement('div');
+ d.className='plot';d.style.left=((c-r)*38+114)+'px';d.style.top=((c+r)*19)+'px';d.style.zIndex=r+c;
+ d.innerHTML='<div class="tile"></div><div class="crop"></div>';d.onclick=()=>tapPlot(i);F.appendChild(d);els.push(d)});
+function paint(){const now=Date.now();let ch=0;
+ S.plots.forEach((p,i)=>{const d=els[i],cr=d.lastChild;let cls='plot ',h='';
+  if(p.s=='l'){cls+='locked';h='<span class="e" style="font-size:16px;opacity:.8">🔒</span>'}
+  else{cls+='soil';
+   if(p.s=='g'){const sd=SEEDS[p.id],tot=sd.min*60,el=(now-p.at)/1000;
+    if(el>=tot){p.s='r';ch=1}else h='<span class="bub">⚡</span><span class="e">'+(el/tot<.5?'🌱':'🌿')+'</span><span class="tm">'+fmt(tot-el)+'</span>'}
+   if(p.s=='r'){cls+=' ready';h='<span class="bub">✋</span><span class="e">'+SEEDS[p.id].e+'</span>'}}
+  d.className=cls;if(cr.dataset.h!==h){cr.dataset.h=h;cr.innerHTML=h}});
+ if(ch)save()}
+function upd(){save();paint();$('coin').textContent=S.coins}
+function tapPlot(i){const p=S.plots[i];
+ if(p.s=='l')return ask('Bu araziyi '+p.cost+' 🪙 ile açalım mı?',()=>{if(S.coins<p.cost)return toast('Yeterli paran yok');S.coins-=p.cost;p.s='e';upd()});
+ if(p.s=='e'){const k=S.sel;if(!S.seeds[k])return toast('Tohum yok. Mağazadan al');S.seeds[k]--;p.s='g';p.id=k;p.at=Date.now();return upd()}
+ if(p.s=='g')return ask('10 dk hızlandır: 20 🪙',()=>{if(S.coins<20)return toast('Yeterli paran yok');S.coins-=20;p.at-=600000;upd()});
+ if(p.s=='r'){const y=SEEDS[p.id].y;S.crops[p.id]=(S.crops[p.id]||0)+y;toast(SEEDS[p.id].e+' +'+y+' '+SEEDS[p.id].n+' depoya eklendi');p.s='e';p.id=null;upd();try{tg.HapticFeedback.notificationOccurred('success')}catch(e){}}}
+let cur=null;
+function open(t,h){$('ttl').textContent=t;$('bx').innerHTML=h;$('ov').classList.add('on')}
+function closeM(){$('ov').classList.remove('on');cur=null}
+function show(k){cur=k;M[k]()}
+function pick(k){S.sel=k;save();show('bag')}
+function buy(k,n){const c=SEEDS[k].price*n;if(S.coins<c)return toast('Yeterli paran yok');S.coins-=c;S.seeds[k]=(S.seeds[k]||0)+n;upd();show('shop')}
+function sell(i){const o=S.orders[i];if((S.crops[o.c]||0)<o.need)return;S.crops[o.c]-=o.need;S.coins+=o.rw;S.orders[i]=mk(o.n,o.e);upd();show('orders');toast('+'+o.rw+' 🪙 kazandın')}
+const day=o=>new Date(Date.now()-o*864e5).toISOString().slice(0,10);
+function claim(){const d=S.daily;if(d.last==day(0))return;const ns=d.last==day(1)?d.streak+1:1;S.coins+=R[(ns-1)%5];d.last=day(0);d.streak=ns;upd();show('gift')}
+const M={
+ bag(){open('Sırt Çantası','<div class="grid">'+Object.keys(SEEDS).map(k=>'<div class="it'+(S.sel==k?' sel':'')+'" onclick="pick(\''+k+'\')"><div class="e">'+SEEDS[k].e+'</div>×'+(S.seeds[k]||0)+'<br><small>'+SEEDS[k].n+'</small></div>').join('')+'</div><p class="hint">Bir tohuma dokun, sonra boş araziye dokunarak ek.</p>')},
+ store(){const ks=Object.keys(S.crops).filter(k=>S.crops[k]>0);open('Depo',ks.length?'<div class="grid">'+ks.map(k=>'<div class="it"><div class="e">'+SEEDS[k].e+'</div>×'+S.crops[k]+'<br><small>'+SEEDS[k].n+'</small></div>').join('')+'</div>':'<p class="hint">Depo boş. Hasat ettiğin ürünler burada birikir.</p>')},
+ shop(){open('Mağaza',Object.keys(SEEDS).map(k=>{const s=SEEDS[k];return'<div class="row"><span style="font-size:30px">'+s.e+'</span><div class="t">'+s.n+' tohumu<br>'+s.min+' dk · '+s.y+' ürün</div><button class="btn" onclick="buy(\''+k+'\',1)">'+s.price+' 🪙</button><button class="btn" onclick="buy(\''+k+'\',5)">×5</button></div>'}).join(''))},
+ orders(){open('Sipariş',S.orders.map((o,i)=>{const h=S.crops[o.c]||0;return'<div class="row"><span style="font-size:30px">'+o.e+'</span><div class="t">'+o.n+'<br>'+SEEDS[o.c].e+' '+h+'/'+o.need+' → '+o.rw+' 🪙</div><button class="btn" '+(h<o.need?'disabled':'')+' onclick="sell('+i+')">Sat</button></div>'}).join(''))},
+ gift(){const d=S.daily,got=d.last==day(0),n=got?(d.streak-1)%5+1:d.streak%5;open('Ödüller','<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:6px">'+R.map((r,i)=>'<div class="it'+(i<n?' sel':'')+'" style="padding:8px 0"><small>Gün '+(i+1)+'</small><br>🪙 '+r+'</div>').join('')+'</div><p style="text-align:center"><button class="btn" '+(got?'disabled':'')+' onclick="claim()">'+(got?'Bugün alındı':'Ödülü al')+'</button></p><p class="hint">Ödül almak için her gün gir.</p>')}};
+const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,nm=(u&&u.first_name)||'ÇİFTÇİ';
+$('nm').textContent=nm.toUpperCase().slice(0,12);$('av').textContent=nm[0].toUpperCase();
+upd();setInterval(paint,1000);
+</script></body></html>
