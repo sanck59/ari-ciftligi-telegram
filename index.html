@@ -96,8 +96,8 @@ html,body{margin:0;height:100%;background:#2f6b2a;font-family:"Trebuchet MS",Ver
   <span id="offtxt"></span><button onclick="buyOffer()">Al</button>
  </div>
  <div id="side">
-  <div class="rb" onclick="show('gift')">🏆<small>Görev</small><span class="dot" id="mdot"></span></div>
-  <div class="rb" onclick="toast('Çalma yakında')">✋<small>Çal</small></div>
+  <div class="rb" onclick="show('board')">🏆<small>Sıralama</small></div>
+  <div class="rb" onclick="show('steal')">✋<small>Çal</small></div>
  </div>
  <div id="field"></div>
  <div id="menu">
@@ -151,7 +151,8 @@ if(!S||!S.plots||S.plots.length!=20){S=fresh();isNew=true}
  if(typeof S.music!=='boolean')S.music=false;
  if(!S.missions||S.missions.date!==day(0))S.missions=freshMissions();
  if(!S.offer||S.offer.date!==day(0))S.offer={date:day(0),bought:false};
- if(!S.stats)S.stats=f.stats;if(!S.ach)S.ach={};if(!('referredBy'in S))S.referredBy=null;}
+ if(!S.stats)S.stats=f.stats;if(!S.ach)S.ach={};if(!('referredBy'in S))S.referredBy=null;
+ if(!S.stolenToday)S.stolenToday={};}
 function day(o){return new Date(Date.now()-o*864e5).toISOString().slice(0,10)}
 // ---- davetle gelen yeni oyuncuya hoşgeldin bonusu ----
 (function(){try{const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
@@ -202,6 +203,39 @@ function roam(){const f=$('farmer'),left=Math.random()<.5,e=COSTUMES[S.decor.cos
 setInterval(roam,6000);
 // ---- XP / seviye ----
 function xpNeed(l){return l*100}
+// ---- Supabase bağlantısı (Sıralama / Çal) ----
+const SB_URL='https://ooxqvlnllwxswloupwff.supabase.co';
+const SB_KEY='sb_publishable_oehf6hohWkBXVHOB0_7qrw_gaV1cYs3';
+function sbHeaders(extra){return Object.assign({apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},extra||{})}
+function myUid(){if(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)return String(tg.initDataUnsafe.user.id);
+ if(!S.localUid){S.localUid='local_'+Math.random().toString(36).slice(2);save()}return S.localUid}
+function myName(){const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;return(u&&u.first_name)||'Çiftçi'}
+async function syncUp(){try{await fetch(SB_URL+'/rest/v1/players',{method:'POST',headers:sbHeaders({Prefer:'resolution=merge-duplicates'}),
+ body:JSON.stringify([{id:myUid(),username:myName(),coins:S.coins,level:S.level,
+  state:{plots:S.plots.map(p=>({s:p.s,id:p.id,at:p.at}))},updated_at:new Date().toISOString()}])})}catch(e){}}
+setInterval(syncUp,30000);
+async function loadBoard(){open('Sıralama','<p class="hint">Yükleniyor…</p>');
+ try{const r=await fetch(SB_URL+'/rest/v1/players?select=username,coins,level&order=coins.desc&limit=10',{headers:sbHeaders()});
+  const list=await r.json();
+  const html=(Array.isArray(list)&&list.length)?'<div class="grid" style="grid-template-columns:1fr">'+list.map((p,i)=>
+   '<div class="row"><b style="width:22px">#'+(i+1)+'</b><div class="t">'+(p.username||'Çiftçi')+'<br><small>Seviye '+p.level+'</small></div><b>'+p.coins+' 🪙</b></div>').join('')+'</div>'
+   :'<p class="hint">Henüz kimse kayıtlı değil. Birkaç dakika oynayıp tekrar bak.</p>';
+  open('Sıralama',html)}catch(e){open('Sıralama','<p class="hint">Bağlantı hatası. Az sonra tekrar dene.</p>')}}
+async function loadSteal(){open('Çal','<p class="hint">Yükleniyor…</p>');
+ try{const r=await fetch(SB_URL+'/rest/v1/players?select=id,username,level,state&order=updated_at.desc&limit=20',{headers:sbHeaders()});
+  const all=await r.json(),uid=myUid();
+  const list=(Array.isArray(all)?all:[]).filter(p=>String(p.id)!==uid);
+  if(!list.length){open('Çal','<p class="hint">Henüz başka oyuncu yok. Arkadaşını davet et!</p>');return}
+  const today=day(0);
+  const html='<div class="grid" style="grid-template-columns:1fr">'+list.slice(0,10).map(p=>{
+   const done=S.stolenToday&&S.stolenToday[p.id]===today;
+   const plots=(p.state&&p.state.plots)||[];
+   const ready=plots.filter(pl=>pl.s=='g'&&pl.id&&SEEDS[pl.id]&&(Date.now()-pl.at)/1000>=SEEDS[pl.id].min*60).length;
+   return'<div class="row"><div class="t"><b>'+(p.username||'Çiftçi')+'</b><br><small>Seviye '+p.level+' · '+ready+' hazır ürün</small></div><button class="btn" '+((!ready||done)?'disabled':'')+' onclick="stealFrom(\''+p.id+'\')">'+(done?'Bugün çaldın':'✋ Çal')+'</button></div>'}).join('')+'</div>';
+  open('Çal',html)}catch(e){open('Çal','<p class="hint">Bağlantı hatası. Az sonra tekrar dene.</p>')}}
+function stealFrom(targetId){if(!S.stolenToday)S.stolenToday={};const today=day(0);if(S.stolenToday[targetId]===today)return;
+ const rw=8+Math.floor(Math.random()*13);S.coins+=rw;S.stats.coinsEarned+=rw;S.stolenToday[targetId]=today;
+ sfxCoin();upd();checkAch();toast('✋ +'+rw+' 🪙 çaldın!');loadSteal()}
 function addXp(n){S.xp+=n;let up=0;while(S.xp>=xpNeed(S.level)){S.xp-=xpNeed(S.level);S.level++;S.gems+=5;up=1;
   const lp=S.plots.find(p=>p.s=='l');if(lp){lp.s='e';toast('🎉 Seviye '+S.level+'! Yeni parsel açıldı + 5 💎')}else toast('🎉 Seviye '+S.level+'! +5 💎')}
  if(up){sfxLevel();pulseZoom()}}
@@ -225,8 +259,8 @@ function updHud(){$('coin').textContent=S.coins;$('gem').textContent=S.gems;
  document.documentElement.style.setProperty('--fc',FENCES[S.decor.fence].c);
  $('roof').setAttribute('fill',ROOFS[S.decor.roof].c);
  const mDone=Object.keys(S.missions.goals).some(k=>S.missions.prog[k]>=S.missions.goals[k]&&!S.missions.claimed[k]);
- $('mdot').classList.toggle('on',mDone);$('gdot').classList.toggle('on',mDone||S.daily.last!==day(0))}
-function upd(){save();paint();updHud()}
+ $('gdot').classList.toggle('on',mDone||S.daily.last!==day(0))}
+function upd(){save();paint();updHud();syncUp()}
 function mprog(t){S.missions.prog[t]=Math.min(S.missions.goals[t],(S.missions.prog[t]||0)+1)}
 function tapPlot(i){const p=S.plots[i];
  if(p.s=='l')return ask('Bu araziyi '+p.cost+' 🪙 ile açalım mı?',()=>{if(S.coins<p.cost)return toast('Yeterli paran yok');S.coins-=p.cost;p.s='e';sfxLock();pulseZoom();upd()});
@@ -240,7 +274,7 @@ function tapPlot(i){const p=S.plots[i];
 let cur=null;
 function open(t,h){$('ttl').textContent=t;$('bx').innerHTML=h;$('ov').classList.add('on')}
 function closeM(){$('ov').classList.remove('on');cur=null}
-function show(k){cur=k;M[k]()}
+function show(k){cur=k;if(k=='board')return loadBoard();if(k=='steal')return loadSteal();M[k]()}
 function pick(k){S.sel=k;upd();closeM();toast(SEEDS[k].e+' '+SEEDS[k].n+' seçildi. Boş araziye dokun')}
 function buy(k,n){if(S.level<SEEDS[k].lvl)return toast('Bu tohum Seviye '+SEEDS[k].lvl+'\'de açılıyor');const c=SEEDS[k].price*n;if(S.coins<c)return toast('Yeterli paran yok');S.coins-=c;S.seeds[k]=(S.seeds[k]||0)+n;sfxCoin();upd();show('shop')}
 function sell(i){const o=S.orders[i];if((S.crops[o.c]||0)<o.need)return;S.crops[o.c]-=o.need;S.coins+=o.rw;S.stats.coinsEarned+=o.rw;S.orders[i]=mk(o.n,o.e);
