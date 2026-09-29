@@ -6,7 +6,8 @@
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
 html,body{margin:0;height:100%;background:#2f6b2a;font-family:"Trebuchet MS",Verdana,sans-serif;overflow:hidden}
-#game{position:relative;height:100dvh;max-width:480px;margin:0 auto;overflow:hidden;background:linear-gradient(#3f8f3a 0,#4c9a3f 26%,#8fd14a 38%,#5fb02c 100%)}
+#game{position:relative;height:100dvh;max-width:480px;margin:0 auto;overflow:hidden;background:linear-gradient(#3f8f3a 0,#4c9a3f 26%,#8fd14a 38%,#5fb02c 100%);transition:transform .5s cubic-bezier(.2,.8,.3,1)}
+#game.zoom{transform:scale(1.035)}
 #tint{position:absolute;inset:0;pointer-events:none;transition:background 3s ease;z-index:1}
 .abs{position:absolute}
 #path{position:absolute;left:-10%;right:-10%;top:23%;height:15%;background:#ecd08f;border-radius:50%}
@@ -88,6 +89,7 @@ html,body{margin:0;height:100%;background:#2f6b2a;font-family:"Trebuchet MS",Ver
   <div class="pill" id="cnp">🪙 <span id="coin">0</span></div>
   <div class="pill gemp" id="gmp">💎 <span id="gem">0</span></div>
   <div class="pill" id="sp" style="padding:0 10px" onclick="show('bag')">🌱 <span id="sel"></span></div>
+  <div class="pill" id="mp" style="padding:0 10px;cursor:pointer" onclick="toggleMusic()"><span id="mIcon">🔇</span></div>
   <div id="xpwrap"><div id="xpbar"></div></div>
  </div>
  <div id="offer" style="display:none">
@@ -113,12 +115,23 @@ const tg=window.Telegram&&Telegram.WebApp;
 try{if(tg){tg.ready();tg.expand();tg.setHeaderColor&&tg.setHeaderColor('#3f8f3a')}}catch(e){}
 const $=id=>document.getElementById(id);
 const SEEDS={
- aycicegi:{n:'Ayçiçeği',e:'🌻',min:5,y:4,price:8,rate:5},
- misir:{n:'Mısır',e:'🌽',min:15,y:6,price:6,rate:4},
- kahve:{n:'Kahve',e:'☕',min:30,y:8,price:10,rate:7}};
+ aycicegi:{n:'Ayçiçeği',e:'🌻',min:5,y:4,price:8,rate:5,lvl:1},
+ misir:{n:'Mısır',e:'🌽',min:15,y:6,price:6,rate:4,lvl:2},
+ kahve:{n:'Kahve',e:'☕',min:30,y:8,price:10,rate:7,lvl:3}};
+const COSTUMES={def:{n:'Varsayılan',e:'🧑‍🌾',cost:0},hat:{n:'Hasat Şapkası',e:'👨‍🌾',cost:40},party:{n:'Şenlik',e:'🥳',cost:80}};
 const FENCES={def:{n:'Ahşap',c:'#7a4a22',cost:0},red:{n:'Kızıl',c:'#b33a3a',cost:60},blue:{n:'Mavi',c:'#2f6fae',cost:60}};
 const ROOFS={def:{n:'Sarı',c:'#f2b632',cost:0},green:{n:'Yeşil',c:'#5fae6f',cost:60},pink:{n:'Pembe',c:'#c85fae',cost:60}};
 const BADGE_T=[10,50,150];
+const ACH_LIST=[
+ {id:'harvest1',d:'İlk hasadını yap',e:'🌱',goal:1,get p(){return S.stats.harvestCount},rw:{coins:20}},
+ {id:'harvest10',d:'10 kez hasat et',e:'🌾',goal:10,get p(){return S.stats.harvestCount},rw:{coins:50,gems:2}},
+ {id:'harvest100',d:'100 kez hasat et',e:'🏅',goal:100,get p(){return S.stats.harvestCount},rw:{coins:300,gems:10}},
+ {id:'plotsAll',d:'Tüm 20 parseli aç',e:'🗺️',goal:20,get p(){return S.plots.filter(x=>x.s!='l').length},rw:{gems:20}},
+ {id:'lvl5',d:'Seviye 5\'e ulaş',e:'⭐',goal:5,get p(){return S.level},rw:{gems:10}},
+ {id:'lvl10',d:'Seviye 10\'a ulaş',e:'🌟',goal:10,get p(){return S.level},rw:{gems:25}},
+ {id:'coins1000',d:'Toplamda 1000 🪙 kazan',e:'💰',goal:1000,get p(){return S.stats.coinsEarned},rw:{gems:8}},
+ {id:'badgeAny',d:'Herhangi bir ürün rozeti kazan',e:'🏆',goal:1,get p(){return Object.keys(SEEDS).some(k=>(S.badges[k]||0)>=BADGE_T[0])?1:0},rw:{coins:40}}];
+function checkAch(){let any=0;ACH_LIST.forEach(a=>{if(!S.ach[a.id]&&a.p>=a.goal)any=1});if(any)save()}
 const K='farm_v2',R=[10,10,20,20,30];
 function mk(n,e){const c=Object.keys(SEEDS)[Math.floor(Math.random()*3)],need=6+Math.floor(Math.random()*9);return{n,e,c,need,rw:Math.round(need*SEEDS[c].rate*1.2)}}
 function freshMissions(){return{date:day(0),goals:{harvest:3+Math.floor(Math.random()*4),plant:3+Math.floor(Math.random()*4),sell:1+Math.floor(Math.random()*2)},prog:{harvest:0,plant:0,sell:0},claimed:{harvest:false,plant:false,sell:false}}}
@@ -126,16 +139,24 @@ function fresh(){return{coins:200,gems:10,sel:'misir',seeds:{misir:5,kahve:3,ayc
  plots:Array.from({length:20},(_,i)=>({s:i<8?'e':'l',id:null,at:0,cost:100+Math.max(0,i-8)*60})),
  orders:[mk('Restoran','🍽️'),mk('Okul','🏫'),mk('Otel','🏨'),mk('AVM','🏬')],
  daily:{last:'',streak:0},xp:0,level:1,badges:{},
- decor:{fence:'def',roof:'def'},owned:{fence:['def'],roof:['def']},
- missions:freshMissions(),offer:{date:'',bought:false}}}
-let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
-if(!S||!S.plots||S.plots.length!=20)S=fresh();
+ decor:{fence:'def',roof:'def',costume:'def'},owned:{fence:['def'],roof:['def'],costume:['def']},
+ missions:freshMissions(),offer:{date:'',bought:false},music:false,
+ stats:{harvestCount:0,plantCount:0,sellCount:0,coinsEarned:0},ach:{},referredBy:null}}
+let S,isNew=false;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S||!S.plots||S.plots.length!=20){S=fresh();isNew=true}
 // eski kayıtlara yeni alanları güvenli şekilde ekle
 {const f=fresh();for(const k in f)if(!(k in S))S[k]=f[k];
  if(!S.badges)S.badges={};if(!S.decor)S.decor=f.decor;if(!S.owned)S.owned=f.owned;
+ if(!S.decor.costume)S.decor.costume='def';if(!S.owned.costume)S.owned.costume=['def'];
+ if(typeof S.music!=='boolean')S.music=false;
  if(!S.missions||S.missions.date!==day(0))S.missions=freshMissions();
- if(!S.offer||S.offer.date!==day(0))S.offer={date:day(0),bought:false};}
+ if(!S.offer||S.offer.date!==day(0))S.offer={date:day(0),bought:false};
+ if(!S.stats)S.stats=f.stats;if(!S.ach)S.ach={};if(!('referredBy'in S))S.referredBy=null;}
 function day(o){return new Date(Date.now()-o*864e5).toISOString().slice(0,10)}
+// ---- davetle gelen yeni oyuncuya hoşgeldin bonusu ----
+(function(){try{const sp=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param;
+ if(isNew&&sp&&sp.indexOf('ref_')===0){S.coins+=100;S.gems+=10;S.referredBy=sp;save();
+ setTimeout(()=>toast('🎉 Davet bonusu: +100 🪙 +10 💎'),600)}}catch(e){}})();
 function save(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('on'),1800)}
 function ask(m,cb){if(tg&&tg.showConfirm&&tg.isVersionAtLeast&&tg.isVersionAtLeast('6.2'))tg.showConfirm(m,ok=>ok&&cb());else if(confirm(m))cb()}
@@ -160,13 +181,30 @@ function tint(){const h=new Date().getHours();let c;
  else if(h>=17&&h<20)c='rgba(255,120,60,.16)';else c='rgba(10,15,60,.38)';
  $('tint').style.background=c}
 setInterval(tint,60000);tint();
+// ---- mevsim (aya göre sabit renk filtresi) ----
+function season(){const m=new Date().getMonth();let f;
+ if(m>=2&&m<=4)f='saturate(1.05) hue-rotate(0deg)';
+ else if(m>=5&&m<=7)f='saturate(1.2) brightness(1.04)';
+ else if(m>=8&&m<=10)f='saturate(.9) hue-rotate(-8deg) sepia(.08)';
+ else f='saturate(.75) hue-rotate(6deg) brightness(.96)';
+ $('game').style.filter=f}
+season();
+// ---- parsel açılışında kamera zoom hissi ----
+function pulseZoom(){const g=$('game');g.classList.add('zoom');setTimeout(()=>g.classList.remove('zoom'),380)}
+// ---- arka plan müziği (basit döngü, dosyasız) ----
+let mNodes=null,mTimer=null;
+function musicStep(){const a=ac();if(!a)return;const notes=[261.6,329.6,392,293.7];const n=notes[Math.floor(Date.now()/2000)%4];
+ const o=a.createOscillator(),g=a.createGain();o.type='sine';o.frequency.value=n/2;g.gain.value=.02;o.connect(g);g.connect(a.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+1.8);o.stop(a.currentTime+1.8)}
+function toggleMusic(){S.music=!S.music;save();$('mIcon').textContent=S.music?'🎵':'🔇';
+ if(S.music){ac();musicStep();mTimer=setInterval(musicStep,2000)}else if(mTimer){clearInterval(mTimer);mTimer=null}}
 // ---- çiftçi dolaşma ----
-function roam(){const f=$('farmer'),left=Math.random()<.5;f.style.right=left?'auto':(8+Math.random()*70)+'%';f.style.left=left?(8+Math.random()*70)+'%':'auto';f.textContent=Math.random()<.5?'🧑‍🌾':'🌾🧑‍🌾'}
+function roam(){const f=$('farmer'),left=Math.random()<.5,e=COSTUMES[S.decor.costume].e;f.style.right=left?'auto':(8+Math.random()*70)+'%';f.style.left=left?(8+Math.random()*70)+'%':'auto';f.textContent=Math.random()<.5?e:'🌾'+e}
 setInterval(roam,6000);
 // ---- XP / seviye ----
 function xpNeed(l){return l*100}
-function addXp(n){S.xp+=n;let up=0;while(S.xp>=xpNeed(S.level)){S.xp-=xpNeed(S.level);S.level++;S.gems+=5;up=1}
- if(up){sfxLevel();toast('🎉 Seviye '+S.level+'! +5 💎');}}
+function addXp(n){S.xp+=n;let up=0;while(S.xp>=xpNeed(S.level)){S.xp-=xpNeed(S.level);S.level++;S.gems+=5;up=1;
+  const lp=S.plots.find(p=>p.s=='l');if(lp){lp.s='e';toast('🎉 Seviye '+S.level+'! Yeni parsel açıldı + 5 💎')}else toast('🎉 Seviye '+S.level+'! +5 💎')}
+ if(up){sfxLevel();pulseZoom()}}
 // ---- görsel yeniden çizim ----
 const F=$('field'),els=[];
 S.plots.forEach((p,i)=>{const r=Math.floor(i/5),c=i%5,d=document.createElement('div');
@@ -191,41 +229,50 @@ function updHud(){$('coin').textContent=S.coins;$('gem').textContent=S.gems;
 function upd(){save();paint();updHud()}
 function mprog(t){S.missions.prog[t]=Math.min(S.missions.goals[t],(S.missions.prog[t]||0)+1)}
 function tapPlot(i){const p=S.plots[i];
- if(p.s=='l')return ask('Bu araziyi '+p.cost+' 🪙 ile açalım mı?',()=>{if(S.coins<p.cost)return toast('Yeterli paran yok');S.coins-=p.cost;p.s='e';sfxLock();upd()});
+ if(p.s=='l')return ask('Bu araziyi '+p.cost+' 🪙 ile açalım mı?',()=>{if(S.coins<p.cost)return toast('Yeterli paran yok');S.coins-=p.cost;p.s='e';sfxLock();pulseZoom();upd()});
  if(p.s=='e'){const k=S.sel;if(!S.seeds[k])return toast('Tohum yok. Mağazadan al');S.seeds[k]--;p.s='g';p.id=k;p.at=Date.now();
-  sfxPlant();fxAt(els[i],'spark','🌱');toast(SEEDS[k].e+' '+SEEDS[k].n+' ekildi');mprog('plant');return upd()}
+  sfxPlant();fxAt(els[i],'spark','🌱');toast(SEEDS[k].e+' '+SEEDS[k].n+' ekildi');mprog('plant');S.stats.plantCount++;return upd()}
  if(p.s=='g')return ask('10 dk hızlandır: 20 🪙',()=>{if(S.coins<20)return toast('Yeterli paran yok');S.coins-=20;p.at-=600000;upd()});
- if(p.s=='r'){const y=SEEDS[p.id].y,cid=p.id;S.crops[cid]=(S.crops[cid]||0)+y;S.badges[cid]=(S.badges[cid]||0)+y;
-  fxAt(els[i],'num','+'+y+' '+SEEDS[cid].e);fxAt(els[i],'spark','✨');sfxHarvest();
-  toast(SEEDS[cid].e+' +'+y+' '+SEEDS[cid].n+' depoya eklendi');addXp(y*2);mprog('harvest');
-  p.s='e';p.id=null;upd();hap('success')}}
+ if(p.s=='r'){const lucky=Math.random()<.12,y=SEEDS[p.id].y*(lucky?2:1),cid=p.id;S.crops[cid]=(S.crops[cid]||0)+y;S.badges[cid]=(S.badges[cid]||0)+y;
+  fxAt(els[i],'num',(lucky?'🍀 ':'')+'+'+y+' '+SEEDS[cid].e);fxAt(els[i],'spark',lucky?'🍀':'✨');sfxHarvest();
+  toast((lucky?'🍀 Şanslı hasat! ':'')+SEEDS[cid].e+' +'+y+' '+SEEDS[cid].n+' depoya eklendi');addXp(y*2);mprog('harvest');S.stats.harvestCount++;
+  p.s='e';p.id=null;upd();checkAch();hap('success')}}
 let cur=null;
 function open(t,h){$('ttl').textContent=t;$('bx').innerHTML=h;$('ov').classList.add('on')}
 function closeM(){$('ov').classList.remove('on');cur=null}
 function show(k){cur=k;M[k]()}
 function pick(k){S.sel=k;upd();closeM();toast(SEEDS[k].e+' '+SEEDS[k].n+' seçildi. Boş araziye dokun')}
-function buy(k,n){const c=SEEDS[k].price*n;if(S.coins<c)return toast('Yeterli paran yok');S.coins-=c;S.seeds[k]=(S.seeds[k]||0)+n;sfxCoin();upd();show('shop')}
-function sell(i){const o=S.orders[i];if((S.crops[o.c]||0)<o.need)return;S.crops[o.c]-=o.need;S.coins+=o.rw;S.orders[i]=mk(o.n,o.e);
- sfxCoin();mprog('sell');upd();show('orders');toast('+'+o.rw+' 🪙 kazandın')}
-function claimLogin(){const d=S.daily;if(d.last==day(0))return;const ns=d.last==day(1)?d.streak+1:1;S.coins+=R[(ns-1)%5];d.last=day(0);d.streak=ns;sfxCoin();upd();show('gift')}
+function buy(k,n){if(S.level<SEEDS[k].lvl)return toast('Bu tohum Seviye '+SEEDS[k].lvl+'\'de açılıyor');const c=SEEDS[k].price*n;if(S.coins<c)return toast('Yeterli paran yok');S.coins-=c;S.seeds[k]=(S.seeds[k]||0)+n;sfxCoin();upd();show('shop')}
+function sell(i){const o=S.orders[i];if((S.crops[o.c]||0)<o.need)return;S.crops[o.c]-=o.need;S.coins+=o.rw;S.stats.coinsEarned+=o.rw;S.orders[i]=mk(o.n,o.e);
+ sfxCoin();mprog('sell');S.stats.sellCount++;upd();checkAch();show('orders');toast('+'+o.rw+' 🪙 kazandın')}
+function claimLogin(){const d=S.daily;if(d.last==day(0))return;const ns=d.last==day(1)?d.streak+1:1;const rw=R[(ns-1)%5];S.coins+=rw;S.stats.coinsEarned+=rw;d.last=day(0);d.streak=ns;sfxCoin();upd();checkAch();show('gift')}
 function claimMission(t){if(S.missions.prog[t]<S.missions.goals[t]||S.missions.claimed[t])return;
- S.missions.claimed[t]=true;const rw=8+S.missions.goals[t]*4;S.coins+=rw;S.gems+=2;sfxCoin();upd();show('gift')}
-function buyDecor(cat,key){const D=cat=='fence'?FENCES:ROOFS,item=D[key];
+ S.missions.claimed[t]=true;const rw=8+S.missions.goals[t]*4;S.coins+=rw;S.stats.coinsEarned+=rw;S.gems+=2;sfxCoin();upd();checkAch();show('gift')}
+function buyDecor(cat,key){const D=cat=='fence'?FENCES:cat=='roof'?ROOFS:COSTUMES,item=D[key];
  if(!S.owned[cat].includes(key)){if(S.gems<item.cost)return toast('Yeterli elmasın yok');S.gems-=item.cost;S.owned[cat].push(key)}
  S.decor[cat]=key;upd();show('shop')}
+function claimAch(id){const a=ACH_LIST.find(x=>x.id==id);if(!a||S.ach[id]||a.p<a.goal)return;
+ S.ach[id]=true;if(a.rw.coins){S.coins+=a.rw.coins;S.stats.coinsEarned+=a.rw.coins}if(a.rw.gems)S.gems+=a.rw.gems;
+ sfxLevel();upd();show('gift');toast('🏆 Başarım: '+a.d)}
 let offTab='seed';
 function buyOffer(){if(S.offer.bought)return;if(S.coins<120)return toast('Yeterli paran yok');S.coins-=120;
  Object.keys(SEEDS).forEach(k=>S.seeds[k]=(S.seeds[k]||0)+4);S.gems+=6;S.offer.bought=true;sfxCoin();upd();renderOffer();toast('Fırsat paketi alındı!')}
 function renderOffer(){const o=$('offer');if(S.offer.bought){o.style.display='none';return}
  o.style.display='flex';$('offtxt').textContent='🔥 Fırsat: 4×tohum(hepsi)+6💎 — 120 🪙';}
+function inviteLink(){const uid=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user&&tg.initDataUnsafe.user.id)||'x';
+ return 'https://t.me/SancakAriCiftligiBot?startapp=ref_'+uid}
+function invite(){const link=inviteLink(),txt='Arı Çiftliği\'nde bana katıl, birlikte ekelim! 🌻';
+ const shareUrl='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent(txt);
+ try{tg&&tg.openTelegramLink?tg.openTelegramLink(shareUrl):window.open(shareUrl,'_blank')}catch(e){window.open(shareUrl,'_blank')}}
 let gTab='login';
 const M={
  bag(){open('Sırt Çantası','<div class="grid">'+Object.keys(SEEDS).map(k=>'<div class="it'+(S.sel==k?' sel':'')+'" onclick="pick(\''+k+'\')"><div class="e">'+SEEDS[k].e+'</div>×'+(S.seeds[k]||0)+'<br><small>'+SEEDS[k].n+'</small></div>').join('')+'</div><p class="hint">Bir tohuma dokun, sonra boş araziye dokunarak ek.</p>')},
  store(){const ks=Object.keys(S.crops).filter(k=>S.crops[k]>0);open('Depo',ks.length?'<div class="grid">'+ks.map(k=>'<div class="it"><div class="e">'+SEEDS[k].e+'</div>×'+S.crops[k]+'<br><small>'+SEEDS[k].n+'</small></div>').join('')+'</div>':'<p class="hint">Depo boş. Hasat ettiğin ürünler burada birikir.</p>')},
- shop(){const seedHtml=Object.keys(SEEDS).map(k=>{const s=SEEDS[k];return'<div class="row"><span style="font-size:30px">'+s.e+'</span><div class="t">'+s.n+' tohumu<br>'+s.min+' dk · '+s.y+' ürün</div><button class="btn" onclick="buy(\''+k+'\',1)">'+s.price+' 🪙</button><button class="btn" onclick="buy(\''+k+'\',5)">×5</button></div>'}).join('');
+ shop(){const seedHtml=Object.keys(SEEDS).map(k=>{const s=SEEDS[k],lock=S.level<s.lvl;return'<div class="row"><span style="font-size:30px;opacity:'+(lock?'.4':'1')+'">'+s.e+'</span><div class="t">'+s.n+' tohumu'+(lock?' <b>(Sv.'+s.lvl+')</b>':'')+'<br>'+s.min+' dk · '+s.y+' ürün</div><button class="btn" '+(lock?'disabled':'')+' onclick="buy(\''+k+'\',1)">'+s.price+' 🪙</button><button class="btn" '+(lock?'disabled':'')+' onclick="buy(\''+k+'\',5)">×5</button></div>'}).join('');
   const decorHtml='<p class="hint" style="margin-top:0">Çit rengi</p><div class="grid">'+Object.keys(FENCES).map(k=>{const f=FENCES[k],own=S.owned.fence.includes(k);return'<div class="it'+(S.decor.fence==k?' sel':own?' own':'')+'" onclick="buyDecor(\'fence\',\''+k+'\')"><div class="e" style="color:'+f.c+'">⬛</div>'+f.n+'<br><small>'+(own?'Sahipsin':f.cost+' 💎')+'</small></div>'}).join('')+
    '</div><p class="hint">Ahır rengi</p><div class="grid">'+Object.keys(ROOFS).map(k=>{const f=ROOFS[k],own=S.owned.roof.includes(k);return'<div class="it'+(S.decor.roof==k?' sel':own?' own':'')+'" onclick="buyDecor(\'roof\',\''+k+'\')"><div class="e" style="color:'+f.c+'">▲</div>'+f.n+'<br><small>'+(own?'Sahipsin':f.cost+' 💎')+'</small></div>'}).join('')+'</div>';
-  open('Mağaza','<div class="tabs"><div class="tab'+(offTab=='seed'?' on':'')+'" onclick="offTab=\'seed\';show(\'shop\')">Tohum</div><div class="tab'+(offTab=='decor'?' on':'')+'" onclick="offTab=\'decor\';show(\'shop\')">Dekor 💎</div></div>'+(offTab=='seed'?seedHtml:decorHtml))},
+  const costHtml='<p class="hint" style="margin-top:0">Çiftçi kıyafeti</p><div class="grid">'+Object.keys(COSTUMES).map(k=>{const c=COSTUMES[k],own=S.owned.costume.includes(k);return'<div class="it'+(S.decor.costume==k?' sel':own?' own':'')+'" onclick="buyDecor(\'costume\',\''+k+'\')"><div class="e">'+c.e+'</div>'+c.n+'<br><small>'+(own?'Sahipsin':c.cost+' 💎')+'</small></div>'}).join('')+'</div>';
+  open('Mağaza','<div class="tabs"><div class="tab'+(offTab=='seed'?' on':'')+'" onclick="offTab=\'seed\';show(\'shop\')">Tohum</div><div class="tab'+(offTab=='decor'?' on':'')+'" onclick="offTab=\'decor\';show(\'shop\')">Dekor 💎</div><div class="tab'+(offTab=='cost'?' on':'')+'" onclick="offTab=\'cost\';show(\'shop\')">Kıyafet 💎</div></div>'+(offTab=='seed'?seedHtml:offTab=='decor'?decorHtml:costHtml))},
  orders(){open('Sipariş',S.orders.map((o,i)=>{const h=S.crops[o.c]||0;return'<div class="row"><span style="font-size:30px">'+o.e+'</span><div class="t">'+o.n+'<br>'+SEEDS[o.c].e+' '+h+'/'+o.need+' → '+o.rw+' 🪙</div><button class="btn" '+(h<o.need?'disabled':'')+' onclick="sell('+i+')">Sat</button></div>'}).join(''))},
  gift(){const d=S.daily,got=d.last==day(0),n=got?(d.streak-1)%5+1:d.streak%5;
   const loginHtml='<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:6px">'+R.map((r,i)=>'<div class="it'+(i<n?' sel':'')+'" style="padding:8px 0"><small>Gün '+(i+1)+'</small><br>🪙 '+r+'</div>').join('')+'</div><p style="text-align:center"><button class="btn" '+(got?'disabled':'')+' onclick="claimLogin()">'+(got?'Bugün alındı':'Ödülü al')+'</button></p><p class="hint">Ödül almak için her gün gir.</p>';
@@ -234,8 +281,11 @@ const M={
    return'<div class="row" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><b>'+pr+'/'+g+' '+labels[t]+'</b><button class="btn" '+((!done||cl)?'disabled':'')+' onclick="claimMission(\''+t+'\')">'+(cl?'Alındı':'Al')+'</button></div><div class="pbar"><i style="width:'+Math.min(100,100*pr/g)+'%"></i></div></div>'}).join('');
   const bHtml='<div class="grid">'+Object.keys(SEEDS).map(k=>{const tot=S.badges[k]||0,tier=BADGE_T.filter(t=>tot>=t).length;
    return'<div class="badge'+(tier?' done':'')+'"><div class="e" style="font-size:28px">'+SEEDS[k].e+'</div>'+SEEDS[k].n+'<br><small>'+tot+' toplam</small><br><small>'+(tier?'⭐'.repeat(tier):'Rozet yok')+'</small></div>'}).join('')+'</div><p class="hint">10 / 50 / 150 toplam hasatta rozet kazanılır.</p>';
-  open('Ödüller','<div class="tabs"><div class="tab'+(gTab=='login'?' on':'')+'" onclick="gTab=\'login\';show(\'gift\')">Giriş</div><div class="tab'+(gTab=='mission'?' on':'')+'" onclick="gTab=\'mission\';show(\'gift\')">Görev</div><div class="tab'+(gTab=='badge'?' on':'')+'" onclick="gTab=\'badge\';show(\'gift\')">Rozet</div></div>'+(gTab=='login'?loginHtml:gTab=='mission'?missHtml:bHtml))}};
+  const aHtml='<div class="grid" style="grid-template-columns:1fr">'+ACH_LIST.map(a=>{const done=S.ach[a.id],can=a.p>=a.goal;
+   return'<div class="row" style="flex-direction:column;align-items:stretch"><div style="display:flex;justify-content:space-between"><b>'+a.e+' '+a.d+'</b><button class="btn" '+((!can||done)?'disabled':'')+' onclick="claimAch(\''+a.id+'\')">'+(done?'Alındı':'Al')+'</button></div><div class="pbar"><i style="width:'+Math.min(100,100*a.p/a.goal)+'%"></i></div><small>'+Math.min(a.p,a.goal)+'/'+a.goal+'</small></div>'}).join('')+'</div>';
+  const inviteHtml='<p class="hint" style="margin-top:0">Arkadaşını davet et, katılınca ona +100 🪙 +10 💎 hoşgeldin bonusu verilir.</p><p style="text-align:center"><button class="btn" onclick="invite()">📤 Davet Linkini Paylaş</button></p><p class="hint">Not: davet eden kişiye (sana) ödül verilmesi bir sunucu gerektirir, o modül henüz kurulmadı.</p>';
+  open('Ödüller','<div class="tabs"><div class="tab'+(gTab=='login'?' on':'')+'" onclick="gTab=\'login\';show(\'gift\')">Giriş</div><div class="tab'+(gTab=='mission'?' on':'')+'" onclick="gTab=\'mission\';show(\'gift\')">Görev</div><div class="tab'+(gTab=='badge'?' on':'')+'" onclick="gTab=\'badge\';show(\'gift\')">Rozet</div><div class="tab'+(gTab=='ach'?' on':'')+'" onclick="gTab=\'ach\';show(\'gift\')">Başarım</div><div class="tab'+(gTab=='invite'?' on':'')+'" onclick="gTab=\'invite\';show(\'gift\')">Davet</div></div>'+(gTab=='login'?loginHtml:gTab=='mission'?missHtml:gTab=='badge'?bHtml:gTab=='ach'?aHtml:inviteHtml))}};
 const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user,nm=(u&&u.first_name)||'ÇİFTÇİ';
 $('nm').textContent=nm.toUpperCase().slice(0,12);$('avc').textContent=nm[0].toUpperCase();
-upd();renderOffer();setInterval(paint,1000);
+upd();renderOffer();$('mIcon').textContent=S.music?'🎵':'🔇';setInterval(paint,1000);
 </script></body></html>
