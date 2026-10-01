@@ -214,6 +214,26 @@ async function syncUp(){try{await fetch(SB_URL+'/rest/v1/players',{method:'POST'
  body:JSON.stringify([{id:myUid(),username:myName(),coins:S.coins,level:S.level,
   state:{plots:S.plots.map(p=>({s:p.s,id:p.id,at:p.at}))},updated_at:new Date().toISOString()}])})}catch(e){}}
 setInterval(syncUp,30000);
+const EDGE_URL='https://ooxqvlnllwxswloupwff.supabase.co/functions/v1/create-invoice';
+const STAR_PACKS={
+ pack_s:{stars:50,gems:50,label:'50 💎'},
+ pack_m:{stars:100,gems:120,label:'120 💎'},
+ pack_l:{stars:220,gems:300,label:'300 💎'}};
+async function refreshGems(){
+ try{const r=await fetch(SB_URL+'/rest/v1/players?id=eq.'+encodeURIComponent(myUid())+'&select=gems',{headers:sbHeaders()});
+  const rows=await r.json();if(Array.isArray(rows)&&rows[0]){S.gems=rows[0].gems||0;save();updHud()}}catch(e){}}
+async function buyGems(sku){
+ if(!tg||!tg.openInvoice){toast('Bu özellik yalnızca Telegram içinde çalışır');return}
+ toast('Fatura hazırlanıyor…');
+ try{
+  const r=await fetch(EDGE_URL,{method:'POST',headers:sbHeaders(),body:JSON.stringify({uid:myUid(),sku})});
+  const data=await r.json();
+  if(!data.link){toast('Hata: '+(data.error||'bilinmeyen'));return}
+  tg.openInvoice(data.link,(status)=>{
+   if(status==='paid'){toast('💎 Ödeme alındı! Elmasların yükleniyor…');setTimeout(refreshGems,2500);setTimeout(refreshGems,6000)}
+   else if(status==='failed'){toast('Ödeme başarısız oldu')}
+  });
+ }catch(e){toast('Bağlantı hatası, tekrar dene')}}
 async function loadBoard(){open('Sıralama','<p class="hint">Yükleniyor…</p>');
  try{const r=await fetch(SB_URL+'/rest/v1/players?select=username,coins,level&order=coins.desc&limit=10',{headers:sbHeaders()});
   const list=await r.json();
@@ -306,7 +326,8 @@ const M={
   const decorHtml='<p class="hint" style="margin-top:0">Çit rengi</p><div class="grid">'+Object.keys(FENCES).map(k=>{const f=FENCES[k],own=S.owned.fence.includes(k);return'<div class="it'+(S.decor.fence==k?' sel':own?' own':'')+'" onclick="buyDecor(\'fence\',\''+k+'\')"><div class="e" style="color:'+f.c+'">⬛</div>'+f.n+'<br><small>'+(own?'Sahipsin':f.cost+' 💎')+'</small></div>'}).join('')+
    '</div><p class="hint">Ahır rengi</p><div class="grid">'+Object.keys(ROOFS).map(k=>{const f=ROOFS[k],own=S.owned.roof.includes(k);return'<div class="it'+(S.decor.roof==k?' sel':own?' own':'')+'" onclick="buyDecor(\'roof\',\''+k+'\')"><div class="e" style="color:'+f.c+'">▲</div>'+f.n+'<br><small>'+(own?'Sahipsin':f.cost+' 💎')+'</small></div>'}).join('')+'</div>';
   const costHtml='<p class="hint" style="margin-top:0">Çiftçi kıyafeti</p><div class="grid">'+Object.keys(COSTUMES).map(k=>{const c=COSTUMES[k],own=S.owned.costume.includes(k);return'<div class="it'+(S.decor.costume==k?' sel':own?' own':'')+'" onclick="buyDecor(\'costume\',\''+k+'\')"><div class="e">'+c.e+'</div>'+c.n+'<br><small>'+(own?'Sahipsin':c.cost+' 💎')+'</small></div>'}).join('')+'</div>';
-  open('Mağaza','<div class="tabs"><div class="tab'+(offTab=='seed'?' on':'')+'" onclick="offTab=\'seed\';show(\'shop\')">Tohum</div><div class="tab'+(offTab=='decor'?' on':'')+'" onclick="offTab=\'decor\';show(\'shop\')">Dekor 💎</div><div class="tab'+(offTab=='cost'?' on':'')+'" onclick="offTab=\'cost\';show(\'shop\')">Kıyafet 💎</div></div>'+(offTab=='seed'?seedHtml:offTab=='decor'?decorHtml:costHtml))},
+  const starsHtml='<p class="hint" style="margin-top:0">Telegram Stars ile gerçek elmas satın al.</p>'+Object.keys(STAR_PACKS).map(k=>{const sp=STAR_PACKS[k];return'<div class="row"><span style="font-size:28px">💎</span><div class="t">'+sp.label+'</div><button class="btn" onclick="buyGems(\''+k+'\')">⭐ '+sp.stars+'</button></div>'}).join('');
+  open('Mağaza','<div class="tabs"><div class="tab'+(offTab=='seed'?' on':'')+'" onclick="offTab=\'seed\';show(\'shop\')">Tohum</div><div class="tab'+(offTab=='decor'?' on':'')+'" onclick="offTab=\'decor\';show(\'shop\')">Dekor</div><div class="tab'+(offTab=='cost'?' on':'')+'" onclick="offTab=\'cost\';show(\'shop\')">Kıyafet</div><div class="tab'+(offTab=='stars'?' on':'')+'" onclick="offTab=\'stars\';show(\'shop\')">💎</div></div>'+(offTab=='seed'?seedHtml:offTab=='decor'?decorHtml:offTab=='cost'?costHtml:starsHtml))},
  orders(){open('Sipariş',S.orders.map((o,i)=>{const h=S.crops[o.c]||0;return'<div class="row"><span style="font-size:30px">'+o.e+'</span><div class="t">'+o.n+'<br>'+SEEDS[o.c].e+' '+h+'/'+o.need+' → '+o.rw+' 🪙</div><button class="btn" '+(h<o.need?'disabled':'')+' onclick="sell('+i+')">Sat</button></div>'}).join(''))},
  gift(){const d=S.daily,got=d.last==day(0),n=got?(d.streak-1)%5+1:d.streak%5;
   const loginHtml='<div class="grid" style="grid-template-columns:repeat(5,1fr);gap:6px">'+R.map((r,i)=>'<div class="it'+(i<n?' sel':'')+'" style="padding:8px 0"><small>Gün '+(i+1)+'</small><br>🪙 '+r+'</div>').join('')+'</div><p style="text-align:center"><button class="btn" '+(got?'disabled':'')+' onclick="claimLogin()">'+(got?'Bugün alındı':'Ödülü al')+'</button></p><p class="hint">Ödül almak için her gün gir.</p>';
