@@ -214,7 +214,7 @@ async function syncUp(){try{await fetch(SB_URL+'/rest/v1/players',{method:'POST'
  body:JSON.stringify([{id:myUid(),username:myName(),coins:S.coins,level:S.level,
   state:{plots:S.plots.map(p=>({s:p.s,id:p.id,at:p.at}))},updated_at:new Date().toISOString()}])})}catch(e){}}
 setInterval(syncUp,30000);
-const EDGE_URL='https://ooxqvlnllwxswloupwff.supabase.co/functions/v1/create-invoice';
+const EDGE_URL='https://ooxqvlnllwxswloupwff.supabase.co/functions/v1/swift-responder';
 const STAR_PACKS={
  pack_s:{stars:50,gems:50,label:'50 💎'},
  pack_m:{stars:100,gems:120,label:'120 💎'},
