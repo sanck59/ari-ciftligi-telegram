@@ -26,6 +26,8 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
 .kagit .s{font-size:18px}
 .gizle{display:none}
 #hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#6fe08a;font-size:13px;min-height:18px;text-align:center;font-weight:700}
+.kural{color:#b9a57e;font-size:11px;line-height:16px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -51,9 +53,11 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
     <div class="kart" style="text-align:center">
       <div class="muted">Deste: <span id="deste">0</span> · Son kart</div>
       <div id="kart" style="margin-top:8px"></div>
+      <div class="kural">Taşlar ortak 40 karelik tahtada yürür. Başlangıç kareleri güvenlidir. Başka bir oyuncunun taşının üstüne gelirsen o taş başa döner. Eve ulaşan taş vurulamaz.</div>
     </div>
     <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
   </div>
+  <div id="bilgi"></div>
   <div id="hata"></div>
 </div>
 
@@ -68,6 +72,7 @@ let masaId = null, masa = null, durumTimer = null, kilit = false;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2500); }
 
 // Sunucudaki kuralların aynısı (sadece gösterim için; doğrulama sunucuda)
 function deger(k) { const r = k % 13; return r === 0 ? 1 : (r <= 8 ? r + 1 : 10); }
@@ -189,7 +194,7 @@ function render() {
     let taslar = '';
     if (p && p[i]) {
       taslar = p[i].map((cur, t) => {
-        const secilebilir = i === ben && benimSiradaKart && legalMi(p, i, kart) && (cur === 0 ? giris(kart) : (cur < 41 && cur + deger(kart) <= 41));
+        const secilebilir = i === ben && benimSiradaKart && (cur === 0 ? giris(kart) : (cur > 0 && cur < 41 && cur + deger(kart) <= 41));
         if (i === ben) {
           return '<button class="tas ' + (secilebilir ? 'secilebilir' : '') + '" ' +
             (secilebilir ? 'onclick="tasOyna(' + t + ')"' : 'disabled') + '>Taş ' + (t + 1) + '<br>' + tasYazi(cur) + '</button>';
@@ -250,13 +255,29 @@ async function islem(fn) {
   await yenile();
 }
 const cek = () => islem(() => rpc('jakaro_cek', { p_masa: masaId }));
-const tasOyna = (t) => islem(() => rpc('jakaro_hamle', { p_masa: masaId, p_tas: t }));
 const pasGec = () => islem(() => rpc('jakaro_hamle', { p_masa: masaId, p_tas: -1 }));
 const baslat = () => islem(async () => {
   await rpc('masa_baslat', { p_masa: masaId });
   const init = masa.oyuncular.map(() => [0, 0, 0, 0]);
   await rpc('masa_hamle', { p_masa: masaId, p_durum: { pos: init }, p_sonraki: false });
 });
+
+// Taş oynama: vuruş olursa bilgi gösterilir
+async function tasOyna(t) {
+  if (kilit) return;
+  kilit = true;
+  try {
+    const s = await rpc('jakaro_hamle', { p_masa: masaId, p_tas: t });
+    if (s && s.vurulan && s.vurulan.length) {
+      bilgi('💥 ' + s.vurulan.length + ' taş vuruldu, başa döndü!');
+    } else if (s && s.bitti) {
+      bilgi('🏆 Dört taş da eve ulaştı!');
+    }
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
 async function ayril() {
   try {
     await rpc('masa_ayril', { p_masa: masaId });
