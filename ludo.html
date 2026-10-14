@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ludo</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#16110b;color:#fff0cf;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
+#app{padding:12px}
+h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
+.kart{background:#241c12;border:1px solid #3a2e1c;border-radius:14px;padding:12px;margin-bottom:10px}
+.btn{background:#f6b422;color:#1b1408;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer}
+.btn.ikincil{background:transparent;color:#fff0cf;border:1px solid #3a2e1c}
+.muted{color:#b9a57e;font-size:12px}
+.satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3a2e1c}
+.satir:last-child{border-bottom:0}
+.grow{flex:1}
+#tahta{position:relative;width:340px;height:340px;margin:0 auto}
+.hucre{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#fff;border:1px solid #bbb}
+.tas{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.tas.secilebilir{box-shadow:0 0 0 3px #fff,0 0 10px #fff;cursor:pointer}
+.renk-0{background:#e53935}.renk-1{background:#43a047}.renk-2{background:#fdd835;color:#1b1408}.renk-3{background:#1e88e5}
+.zar{display:inline-flex;width:44px;height:44px;border-radius:10px;background:#fff;color:#1b1408;font-weight:800;font-size:22px;align-items:center;justify-content:center}
+.gizle{display:none}
+#hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>🎲 Ludo</h2>
+  <div id="lobi">
+    <div class="kart">
+      <div class="muted">Bu odadaki masalar</div>
+      <div id="masalar"></div>
+      <div style="margin-top:8px">
+        <button class="btn" onclick="masaAc(2)">2 kişilik aç</button>
+        <button class="btn" onclick="masaAc(3)">3 kişilik aç</button>
+        <button class="btn" onclick="masaAc(4)">4 kişilik aç</button>
+      </div>
+    </div>
+  </div>
+  <div id="masa" class="gizle">
+    <div class="kart">
+      <div id="baslik"></div>
+      <div id="oyuncular"></div>
+      <div id="aksiyon" style="margin-top:8px"></div>
+    </div>
+    <div class="kart"><div id="tahta"></div></div>
+    <div class="kart" style="text-align:center"><div id="zarAlan"></div></div>
+    <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
+  </div>
+  <div id="hata"></div>
+</div>
+
+<script>
+const CFG = window.ARI_CIFTLIK || null;
+const ODA = window.ARI_ODA || null;
+const TOTAL = 57;
+const START = [0, 13, 26, 39];
+const RENK = ['#e53935', '#43a047', '#fdd835', '#1e88e5'];
+const RENK_AD = ['Kırmızı', 'Yeşil', 'Sarı', 'Mavi'];
+
+let masaId = null, masa = null, durumTimer = null, benimZar = null, kilit = false;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function hata(m) { $('hata').textContent = m || ''; }
+
+async function rpc(ad, body) {
+  if (!CFG) throw new Error('Oturum yok, uygulamadan tekrar gir');
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + ad, {
+    method: 'POST',
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Hata ' + r.status));
+  return j;
+}
+async function tablo(yol) {
+  const r = await fetch(CFG.url + '/rest/v1/' + yol, {
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token }
+  });
+  return r.json();
+}
+
+// ---------- Tahta geometrisi ----------
+function yolKoord(t) {
+  const ang = (t / 52) * 2 * Math.PI - Math.PI / 2;
+  return { x: 170 + 130 * Math.cos(ang), y: 170 + 130 * Math.sin(ang) };
+}
+function kolKoord(ci, k) {
+  const ang = (START[ci] / 52) * 2 * Math.PI - Math.PI / 2;
+  const r = 130 - (k - 50) * 21;
+  return { x: 170 + r * Math.cos(ang), y: 170 + r * Math.sin(ang) };
+}
+function konum(ci, p, k) {
+  if (k === -1) {
+    const bx = [60, 280, 280, 60], by = [60, 60, 280, 280];
+    return { x: bx[ci] + (p % 2) * 22 - 11, y: by[ci] + Math.floor(p / 2) * 22 - 11 };
+  }
+  if (k >= 0 && k <= 50) return yolKoord((START[ci] + k) % 52);
+  if (k >= 51 && k <= 56) return kolKoord(ci, k);
+  return { x: 170 + (p % 2) * 16 - 8, y: 170 + Math.floor(p / 2) * 16 - 8 };
+}
+
+// ---------- Kurallar ----------
+// pos[ci][p]: -1 = bekliyor, 0..50 = ana yol, 51..56 = kendi kolu, 57 = bitiş
+function hamleler(pos, ci, zar) {
+  const liste = [];
+  pos[ci].forEach((k, p) => {
+    if (k === -1) { if (zar === 6) liste.push(p); }
+    else if (k + zar <= TOTAL) liste.push(p);
+  });
+  return liste;
+}
+function yeniPos(pos, ci, p, zar) {
+  const np = pos.map((a) => a.slice());
+  let k = np[ci][p];
+  k = k === -1 ? 0 : k + zar;
+  np[ci][p] = k;
+  if (k >= 0 && k <= 50) {
+    const t = (START[ci] + k) % 52;
+    for (let c = 0; c < np.length; c++) {
+      if (c === ci) continue;
+      for (let q = 0; q < 4; q++) {
+        const kk = np[c][q];
+        if (kk >= 0 && kk <= 50 && (START[c] + kk) % 52 === t) np[c][q] = -1;
+      }
+    }
+  }
+  return np;
+}
+
+// ---------- Yardımcılar ----------
+function benIndex() {
+  return masa ? masa.oyuncular.findIndex((o) => o.id === CFG.uid) : -1;
+}
+
+// ---------- Lobi ----------
+async function lobiYukle() {
+  hata('');
+  if (!ODA) { $('masalar').innerHTML = '<div class="muted">Oda bilgisi alınamadı. Oyunu odadan aç.</div>'; return; }
+  const liste = await tablo('oyun_masalari?oda_id=eq.' + ODA + '&oyun=eq.ludo&durum=neq.bitti&select=id,durum,max_oyuncu,sahip_id&order=olusturma.desc');
+  if (!Array.isArray(liste) || liste.length === 0) {
+    $('masalar').innerHTML = '<div class="muted">Açık masa yok. Aşağıdan bir masa aç.</div>';
+    return;
+  }
+  const oyuncular = await Promise.all(liste.map((m) => tablo('oyun_masa_oyuncular?masa_id=eq.' + m.id + '&select=kullanici_id')));
+  $('masalar').innerHTML = liste.map((m, i) => {
+    const n = oyuncular[i].length;
+    const icinde = oyuncular[i].some((x) => x.kullanici_id === CFG.uid);
+    const etiket = m.durum === 'bekliyor' ? (n + '/' + m.max_oyuncu + ' bekliyor') : 'Oynanıyor';
+    const bosYok = !icinde && (m.durum === 'oynaniyor' || n >= m.max_oyuncu);
+    const buton = bosYok ? '' : '<button class="btn" onclick="girMasa(' + m.id + ')">' + (icinde ? 'Aç' : 'Katıl') + '</button>';
+    return '<div class="satir"><div class="grow">Masa #' + m.id + '<div class="muted">' + etiket + '</div></div>' + buton + '</div>';
+  }).join('');
+}
+
+async function masaAc(n) {
+  hata('');
+  try {
+    const id = await rpc('masa_ac', { p_oda: ODA, p_oyun: 'ludo', p_max: n });
+    await girMasa(id);
+  } catch (e) { hata(e.message); }
+}
+
+async function girMasa(id) {
+  hata('');
+  try {
+    const d = await rpc('masa_durumu', { p_masa: id });
+    const icinde = d.oyuncular.some((o) => o.id === CFG.uid);
+    if (!icinde) {
+      if (d.durum !== 'bekliyor') throw new Error('Bu masa oynanıyor');
+      await rpc('masa_katil', { p_masa: id });
+    }
+    masaId = id;
+    benimZar = null;
+    $('lobi').classList.add('gizle');
+    $('masa').classList.remove('gizle');
+    await yenile();
+    clearInterval(durumTimer);
+    durumTimer = setInterval(yenile, 1500);
+  } catch (e) { hata(e.message); }
+}
+
+function lobiyeDon() {
+  clearInterval(durumTimer);
+  durumTimer = null;
+  masaId = null; masa = null; benimZar = null;
+  $('masa').classList.add('gizle');
+  $('lobi').classList.remove('gizle');
+  lobiYukle();
+}
+
+// ---------- Masa ----------
+async function yenile() {
+  if (!masaId) return;
+  try {
+    masa = await rpc('masa_durumu', { p_masa: masaId });
+    if (masa.sira_kullanici !== CFG.uid) benimZar = null;
+    render();
+  } catch (e) { hata(e.message); }
+}
+
+function render() {
+  if (!masa) return;
+  const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
+  $('baslik').innerHTML = '<b>Masa #' + masaId + '</b> · ' + durumYazi;
+  $('oyuncular').innerHTML = masa.oyuncular.map((o, i) =>
+    '<div class="satir"><span class="tas" style="position:static;width:16px;height:16px;background:' + RENK[i] + '"></span>' +
+    '<div class="grow">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</div>' +
+    '<span class="muted">' + RENK_AD[i] + '</span></div>'
+  ).join('');
+  tahtaCiz();
+  aksiyonCiz();
+  zarCiz();
+}
+
+function tahtaCiz() {
+  const t = $('tahta');
+  t.innerHTML = '';
+  for (let i = 0; i < 52; i++) {
+    const { x, y } = yolKoord(i);
+    const d = document.createElement('div');
+    d.className = 'hucre';
+    d.style.left = x + 'px';
+    d.style.top = y + 'px';
+    const ci = START.indexOf(i);
+    if (ci >= 0) {
+      d.style.background = RENK[ci];
+      d.style.width = d.style.height = '16px';
+      d.style.margin = '-8px 0 0 -8px';
+    }
+    t.appendChild(d);
+  }
+  for (let ci = 0; ci < 4; ci++) {
+    for (let k = 51; k <= 56; k++) {
+      const { x, y } = kolKoord(ci, k);
+      const d = document.createElement('div');
+      d.className = 'hucre';
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.background = RENK[ci];
+      d.style.width = d.style.height = '8px';
+      d.style.margin = '-4px 0 0 -4px';
+      t.appendChild(d);
+    }
+  }
+  const st = masa && masa.durum_json;
+  if (!st || !st.pos) return;
+  const ben = benIndex();
+  const secil = (masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid && benimZar != null && ben >= 0)
+    ? hamleler(st.pos, ben, benimZar) : [];
+  st.pos.forEach((kollar, ci) => {
+    kollar.forEach((k, p) => {
+      const { x, y } = konum(ci, p, k);
+      const e = document.createElement('div');
+      const parlak = ci === ben && secil.includes(p);
+      e.className = 'tas renk-' + ci + (parlak ? ' secilebilir' : '');
+      e.textContent = p + 1;
+      e.style.left = x + 'px';
+      e.style.top = y + 'px';
+      if (parlak) e.onclick = () => tasTikla(p);
+      t.appendChild(e);
+    });
+  });
+}
+
+function aksiyonCiz() {
+  const a = $('aksiyon');
+  a.innerHTML = '';
+  if (!masa) return;
+  const ekle = (yazi, fn, ikincil) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (ikincil ? ' ikincil' : '');
+    b.textContent = yazi;
+    b.onclick = fn;
+    a.appendChild(b);
+  };
+  const sahibiMi = masa.sahip_id === CFG.uid;
+  if (masa.durum === 'bekliyor') {
+    if (sahibiMi && masa.oyuncular.length >= 2) ekle('Oyunu başlat', baslat);
+    else if (!sahibiMi) a.insertAdjacentHTML('beforeend', '<span class="muted">Sahibin başlatması bekleniyor…</span>');
+    ekle(sahibiMi ? 'Masayı kapat' : 'Masadan ayrıl', ayril, true);
+  } else if (masa.durum === 'oynaniyor') {
+    if (!masa.durum_json || !masa.durum_json.pos) {
+      a.insertAdjacentHTML('beforeend', '<span class="muted">Hazırlanıyor…</span>');
+      return;
+    }
+    if (masa.sira_kullanici === CFG.uid) {
+      if (benimZar == null && !masa.tur_hareket) ekle('🎲 Zar at', zarAt);
+      else if (benimZar == null && masa.tur_hareket) ekle('Turu pas geç', turPas, true);
+      else a.insertAdjacentHTML('beforeend', '<span class="muted">Hamle seç: parlayan taşa dokun</span>');
+    } else {
+      const s = masa.oyuncular.find((o) => o.id === masa.sira_kullanici);
+      a.insertAdjacentHTML('beforeend', '<span class="muted">Sıra: ' + esc(s ? s.nickname : '') + '</span>');
+    }
+  } else {
+    const k = masa.oyuncular.find((o) => o.id === masa.kazanan);
+    a.insertAdjacentHTML('beforeend', '<span class="muted">🏆 Kazanan: ' + esc(k ? k.nickname : '') +
+      ' · +' + masa.odul + ' 🪙 coin</span>');
+  }
+}
+
+function zarCiz() {
+  const z = benimZar != null ? benimZar : (masa && masa.durum_json && masa.durum_json.zar);
+  $('zarAlan').innerHTML = z ? '<span class="zar">' + z + '</span><div class="muted">Son zar</div>'
+                             : '<span class="muted">Henüz zar atılmadı</span>';
+}
+
+async function hamleGonder(pos, z) {
+  const sonraki = z !== 6;
+  await rpc('masa_hamle', { p_masa: masaId, p_durum: { pos: pos, zar: z }, p_sonraki: sonraki });
+}
+
+async function baslat() {
+  if (kilit) return;
+  kilit = true;
+  try {
+    await rpc('masa_baslat', { p_masa: masaId });
+    const init = masa.oyuncular.map(() => [-1, -1, -1, -1]);
+    await hamleGonder(init, null);
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
+async function ayril() {
+  try {
+    await rpc('masa_ayril', { p_masa: masaId });
+    lobiyeDon();
+  } catch (e) { hata(e.message); }
+}
+
+async function zarAt() {
+  if (kilit) return;
+  kilit = true;
+  try {
+    const z = await rpc('masa_zar', { p_masa: masaId });
+    benimZar = z;
+    const ci = benIndex();
+    const pos = masa.durum_json.pos;
+    if (hamleler(pos, ci, z).length === 0) {
+      await hamleGonder(pos, z);
+      benimZar = null;
+    }
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
+async function tasTikla(p) {
+  if (kilit || benimZar == null) return;
+  kilit = true;
+  try {
+    const ci = benIndex();
+    const z = benimZar;
+    const pos = masa.durum_json.pos;
+    if (!hamleler(pos, ci, z).includes(p)) throw new Error('Bu taş hareket edemez');
+    const np = yeniPos(pos, ci, p, z);
+    if (np[ci].every((k) => k === TOTAL)) {
+      await rpc('masa_bitir', { p_masa: masaId, p_kazanan: CFG.uid });
+    } else {
+      await hamleGonder(np, z);
+    }
+    benimZar = null;
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
+async function turPas() {
+  if (kilit) return;
+  kilit = true;
+  try {
+    await hamleGonder(masa.durum_json.pos, null);
+    benimZar = null;
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
+lobiYukle().catch((e) => hata(e.message));
+</script>
+</body>
+</html>
