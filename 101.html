@@ -24,7 +24,10 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
 .kagit .s{font-size:16px}
 .kagit.secilebilir{border-color:#f6b422;cursor:pointer}
 .yerde{display:flex;justify-content:space-around;align-items:center;margin:8px 0;text-align:center}
+.yerde .alinabilir{border-radius:10px;padding:4px;border:2px dashed transparent}
+.yerde .alinabilir.acik{border-color:#f6b422;cursor:pointer}
 #hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#6fe08a;font-size:13px;min-height:18px;text-align:center;font-weight:700}
 .gizle{display:none}
 </style>
 </head>
@@ -51,7 +54,7 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
     <div class="kart">
       <div class="yerde">
         <div><div class="muted">Deste</div><div id="deste"></div></div>
-        <div><div class="muted">Yerdeki kart</div><div id="yerdeKart"></div></div>
+        <div><div class="muted">Yerdeki kart (almak için dokun)</div><div id="yerdeKart" class="alinabilir"></div></div>
       </div>
     </div>
     <div class="kart">
@@ -61,6 +64,7 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
     </div>
     <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
   </div>
+  <div id="bilgi"></div>
   <div id="hata"></div>
 </div>
 
@@ -75,6 +79,7 @@ let masaId = null, masa = null, durumTimer = null, kilit = false;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2500); }
 function puan(k) { const r = k % 13; return r === 0 ? 1 : (r >= 9 ? 10 : r + 1); }
 function kartHtml(k, ek) {
   const s = Math.floor(k / 13), r = k % 13;
@@ -166,6 +171,9 @@ async function yenile() {
 
 function benimSira() { return !!masa && masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid; }
 function elPuan() { return (masa.el || []).reduce((a, k) => a + puan(k), 0); }
+function yerdeListe() { return (masa && masa.durum_json && masa.durum_json.yerde) || []; }
+// Yerdeki kart alınabilir mi: sıra bende, henüz kart çekmedim, yerde kart var
+function yerdenAlinabilir() { return benimSira() && !masa.tur_hareket && yerdeListe().length > 0; }
 
 function render() {
   if (!masa) return;
@@ -177,14 +185,20 @@ function render() {
     '</div><span class="muted">' + (o.el_sayisi || 0) + ' kart</span></div>'
   ).join('');
   $('deste').textContent = masa.deste_sayisi;
-  const yerde = (masa.durum_json && masa.durum_json.yerde) || [];
-  $('yerdeKart').innerHTML = yerde.length ? kartHtml(yerde[yerde.length - 1]) : '<span class="muted">—</span>';
+
+  const yerde = yerdeListe();
+  const alinir = yerdenAlinabilir();
+  $('yerdeKart').innerHTML = yerde.length
+    ? kartHtml(yerde[yerde.length - 1], alinir ? 'secilebilir' : '')
+    : '<span class="muted">—</span>';
+  $('yerdeKart').className = 'alinabilir' + (alinir ? ' acik' : '');
+
   $('puan').textContent = '(' + elPuan() + ' puan)';
   const tur = benimSira() && masa.tur_hareket;
   $('el').innerHTML = (masa.el || []).slice().sort((a, b) => a - b)
     .map((k) => kartHtml(k, tur ? 'secilebilir' : '')).join('');
   $('ipucu').textContent = benimSira()
-    ? (masa.tur_hareket ? 'Atmak istediğin karta dokun' : 'Önce desteden kart çek')
+    ? (masa.tur_hareket ? 'Atmak istediğin karta dokun' : 'Desteden çek veya yerdekini al')
     : '';
   aksiyonCiz();
 }
@@ -208,12 +222,11 @@ function aksiyonCiz() {
     else if (!sahibi) not('Sahibin başlatması bekleniyor…');
     ekle(sahibi ? 'Masayı kapat' : 'Masadan ayrıl', ayril, true);
   } else if (masa.durum === 'oynaniyor') {
-    if (desteBos) {
-      ekle('Sonucu hesapla (deste bitti)', bitir);
-    }
+    if (desteBos) ekle('Sonucu hesapla (deste bitti)', bitir);
     if (benimSira()) {
       if (!masa.tur_hareket) {
         if (!desteBos) ekle('🃏 Desteden çek', cek);
+        if (yerdeListe().length > 0) ekle('⬆ Yerden al', yerdenAl);
         if (elPuan() <= 5 && !desteBos) ekle('101 Bitir', bitir, true);
       } else {
         not('Bir kart seç ve at');
@@ -228,7 +241,6 @@ function aksiyonCiz() {
   }
 }
 
-// Ortak işlem sarmalayıcı: çift tıklamayı önler, sonra masayı yeniler
 async function islem(fn) {
   if (kilit) return;
   kilit = true;
@@ -237,6 +249,7 @@ async function islem(fn) {
   await yenile();
 }
 const cek = () => islem(() => rpc('masa_kart_cek', { p_masa: masaId }));
+const yerdenAl = () => islem(() => rpc('masa_101_yerden_al', { p_masa: masaId }));
 const at = (k) => islem(() => rpc('masa_101_at', { p_masa: masaId, p_kart: k }));
 const bitir = () => islem(() => rpc('masa_101_bitir', { p_masa: masaId }));
 const baslat = () => islem(() => rpc('masa_baslat', { p_masa: masaId }));
@@ -246,6 +259,12 @@ async function ayril() {
     lobiyeDon();
   } catch (e) { hata(e.message); }
 }
+
+// Yerdeki karta dokununca al
+$('yerdeKart').addEventListener('click', (e) => {
+  if (!yerdenAlinabilir()) return;
+  yerdenAl();
+});
 
 // Elindeki karta dokununca at (sadece kendi sırasında, çektikten sonra)
 $('el').addEventListener('click', (e) => {
