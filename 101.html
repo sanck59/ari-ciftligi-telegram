@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>101</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#16110b;color:#fff0cf;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
+#app{padding:12px}
+h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
+.kart{background:#241c12;border:1px solid #3a2e1c;border-radius:14px;padding:12px;margin-bottom:10px}
+.btn{background:#f6b422;color:#1b1408;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer}
+.btn.ikincil{background:transparent;color:#fff0cf;border:1px solid #3a2e1c}
+.btn:disabled{opacity:.45}
+.muted{color:#b9a57e;font-size:12px}
+.satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3a2e1c}
+.satir:last-child{border-bottom:0}
+.grow{flex:1}
+.el{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0;min-height:80px}
+.kagit{width:54px;height:76px;background:#fff;color:#1b1408;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 4px rgba(0,0,0,.4);border:2px solid transparent;user-select:none}
+.kagit.kirmizi{color:#c62828}
+.kagit .r{font-size:18px}
+.kagit .s{font-size:16px}
+.kagit.secilebilir{border-color:#f6b422;cursor:pointer}
+.yerde{display:flex;justify-content:space-around;align-items:center;margin:8px 0;text-align:center}
+#hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+.gizle{display:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>🃏 101</h2>
+  <div id="lobi">
+    <div class="kart">
+      <div class="muted">Bu odadaki masalar</div>
+      <div id="masalar"></div>
+      <div style="margin-top:8px">
+        <button class="btn" onclick="masaAc(2)">2 kişilik aç</button>
+        <button class="btn" onclick="masaAc(3)">3 kişilik aç</button>
+        <button class="btn" onclick="masaAc(4)">4 kişilik aç</button>
+      </div>
+    </div>
+  </div>
+  <div id="masa" class="gizle">
+    <div class="kart">
+      <div id="baslik"></div>
+      <div id="oyuncular"></div>
+      <div id="aksiyon" style="margin-top:8px"></div>
+    </div>
+    <div class="kart">
+      <div class="yerde">
+        <div><div class="muted">Deste</div><div id="deste"></div></div>
+        <div><div class="muted">Yerdeki kart</div><div id="yerdeKart"></div></div>
+      </div>
+    </div>
+    <div class="kart">
+      <div class="muted" style="text-align:center">Elin <span id="puan"></span></div>
+      <div class="el" id="el"></div>
+      <div class="muted" id="ipucu" style="text-align:center"></div>
+    </div>
+    <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
+  </div>
+  <div id="hata"></div>
+</div>
+
+<script>
+const CFG = window.ARI_CIFTLIK || null;
+const ODA = window.ARI_ODA || null;
+const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const SUITS = ['♠','♥','♦','♣'];
+
+let masaId = null, masa = null, durumTimer = null, kilit = false;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function hata(m) { $('hata').textContent = m || ''; }
+function puan(k) { const r = k % 13; return r === 0 ? 1 : (r >= 9 ? 10 : r + 1); }
+function kartHtml(k, ek) {
+  const s = Math.floor(k / 13), r = k % 13;
+  const cls = 'kagit ' + ((s === 1 || s === 2) ? 'kirmizi ' : '') + (ek || '');
+  return '<div class="' + cls + '" data-k="' + k + '"><div class="r">' + RANKS[r] + '</div><div class="s">' + SUITS[s] + '</div></div>';
+}
+
+async function rpc(ad, body) {
+  if (!CFG) throw new Error('Oturum yok, uygulamadan tekrar gir');
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + ad, {
+    method: 'POST',
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Hata ' + r.status));
+  return j;
+}
+async function tablo(yol) {
+  const r = await fetch(CFG.url + '/rest/v1/' + yol, {
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token }
+  });
+  return r.json();
+}
+
+// ---------- Lobi ----------
+async function lobiYukle() {
+  hata('');
+  if (!ODA) { $('masalar').innerHTML = '<div class="muted">Oda bilgisi alınamadı. Oyunu odadan aç.</div>'; return; }
+  const liste = await tablo('oyun_masalari?oda_id=eq.' + ODA + '&oyun=eq.101&durum=neq.bitti&select=id,durum,max_oyuncu,sahip_id&order=olusturma.desc');
+  if (!Array.isArray(liste) || liste.length === 0) {
+    $('masalar').innerHTML = '<div class="muted">Açık masa yok. Aşağıdan bir masa aç.</div>';
+    return;
+  }
+  const oyuncular = await Promise.all(liste.map((m) => tablo('oyun_masa_oyuncular?masa_id=eq.' + m.id + '&select=kullanici_id')));
+  $('masalar').innerHTML = liste.map((m, i) => {
+    const n = oyuncular[i].length;
+    const icinde = oyuncular[i].some((x) => x.kullanici_id === CFG.uid);
+    const etiket = m.durum === 'bekliyor' ? (n + '/' + m.max_oyuncu + ' bekliyor') : 'Oynanıyor';
+    const bosYok = !icinde && (m.durum === 'oynaniyor' || n >= m.max_oyuncu);
+    const buton = bosYok ? '' : '<button class="btn" onclick="girMasa(' + m.id + ')">' + (icinde ? 'Aç' : 'Katıl') + '</button>';
+    return '<div class="satir"><div class="grow">Masa #' + m.id + '<div class="muted">' + etiket + '</div></div>' + buton + '</div>';
+  }).join('');
+}
+
+async function masaAc(n) {
+  hata('');
+  try {
+    const id = await rpc('masa_ac', { p_oda: ODA, p_oyun: '101', p_max: n });
+    await girMasa(id);
+  } catch (e) { hata(e.message); }
+}
+
+async function girMasa(id) {
+  hata('');
+  try {
+    const d = await rpc('masa_durumu', { p_masa: id });
+    const icinde = d.oyuncular.some((o) => o.id === CFG.uid);
+    if (!icinde) {
+      if (d.durum !== 'bekliyor') throw new Error('Bu masa oynanıyor');
+      await rpc('masa_katil', { p_masa: id });
+    }
+    masaId = id;
+    $('lobi').classList.add('gizle');
+    $('masa').classList.remove('gizle');
+    await yenile();
+    clearInterval(durumTimer);
+    durumTimer = setInterval(yenile, 1500);
+  } catch (e) { hata(e.message); }
+}
+
+function lobiyeDon() {
+  clearInterval(durumTimer);
+  durumTimer = null;
+  masaId = null; masa = null;
+  $('masa').classList.add('gizle');
+  $('lobi').classList.remove('gizle');
+  lobiYukle();
+}
+
+// ---------- Masa ----------
+async function yenile() {
+  if (!masaId) return;
+  try {
+    masa = await rpc('masa_durumu', { p_masa: masaId });
+    render();
+  } catch (e) { hata(e.message); }
+}
+
+function benimSira() { return !!masa && masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid; }
+function elPuan() { return (masa.el || []).reduce((a, k) => a + puan(k), 0); }
+
+function render() {
+  if (!masa) return;
+  const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
+  $('baslik').innerHTML = '<b>Masa #' + masaId + '</b> · ' + durumYazi;
+  $('oyuncular').innerHTML = masa.oyuncular.map((o) =>
+    '<div class="satir"><div class="grow">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') +
+    (masa.durum === 'oynaniyor' && o.id === masa.sira_kullanici ? ' 👈' : '') +
+    '</div><span class="muted">' + (o.el_sayisi || 0) + ' kart</span></div>'
+  ).join('');
+  $('deste').textContent = masa.deste_sayisi;
+  const yerde = (masa.durum_json && masa.durum_json.yerde) || [];
+  $('yerdeKart').innerHTML = yerde.length ? kartHtml(yerde[yerde.length - 1]) : '<span class="muted">—</span>';
+  $('puan').textContent = '(' + elPuan() + ' puan)';
+  const tur = benimSira() && masa.tur_hareket;
+  $('el').innerHTML = (masa.el || []).slice().sort((a, b) => a - b)
+    .map((k) => kartHtml(k, tur ? 'secilebilir' : '')).join('');
+  $('ipucu').textContent = benimSira()
+    ? (masa.tur_hareket ? 'Atmak istediğin karta dokun' : 'Önce desteden kart çek')
+    : '';
+  aksiyonCiz();
+}
+
+function aksiyonCiz() {
+  const a = $('aksiyon');
+  a.innerHTML = '';
+  const ekle = (yazi, fn, ikincil) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (ikincil ? ' ikincil' : '');
+    b.textContent = yazi;
+    b.onclick = fn;
+    a.appendChild(b);
+  };
+  const not = (t) => a.insertAdjacentHTML('beforeend', '<span class="muted">' + t + '</span>');
+  const sahibi = masa.sahip_id === CFG.uid;
+  const desteBos = masa.deste_sayisi === 0;
+
+  if (masa.durum === 'bekliyor') {
+    if (sahibi && masa.oyuncular.length >= 2) ekle('Oyunu başlat', baslat);
+    else if (!sahibi) not('Sahibin başlatması bekleniyor…');
+    ekle(sahibi ? 'Masayı kapat' : 'Masadan ayrıl', ayril, true);
+  } else if (masa.durum === 'oynaniyor') {
+    if (desteBos) {
+      ekle('Sonucu hesapla (deste bitti)', bitir);
+    }
+    if (benimSira()) {
+      if (!masa.tur_hareket) {
+        if (!desteBos) ekle('🃏 Desteden çek', cek);
+        if (elPuan() <= 5 && !desteBos) ekle('101 Bitir', bitir, true);
+      } else {
+        not('Bir kart seç ve at');
+      }
+    } else {
+      const s = masa.oyuncular.find((o) => o.id === masa.sira_kullanici);
+      not('Sıra: ' + esc(s ? s.nickname : ''));
+    }
+  } else {
+    const k = masa.oyuncular.find((o) => o.id === masa.kazanan);
+    not('🏆 Kazanan: ' + esc(k ? k.nickname : '') + ' · +' + masa.odul + ' 🪙 coin');
+  }
+}
+
+// Ortak işlem sarmalayıcı: çift tıklamayı önler, sonra masayı yeniler
+async function islem(fn) {
+  if (kilit) return;
+  kilit = true;
+  try { await fn(); } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+const cek = () => islem(() => rpc('masa_kart_cek', { p_masa: masaId }));
+const at = (k) => islem(() => rpc('masa_101_at', { p_masa: masaId, p_kart: k }));
+const bitir = () => islem(() => rpc('masa_101_bitir', { p_masa: masaId }));
+const baslat = () => islem(() => rpc('masa_baslat', { p_masa: masaId }));
+async function ayril() {
+  try {
+    await rpc('masa_ayril', { p_masa: masaId });
+    lobiyeDon();
+  } catch (e) { hata(e.message); }
+}
+
+// Elindeki karta dokununca at (sadece kendi sırasında, çektikten sonra)
+$('el').addEventListener('click', (e) => {
+  const c = e.target.closest('.kagit');
+  if (!c || !benimSira() || !masa.tur_hareket) return;
+  at(Number(c.dataset.k));
+});
+
+lobiYukle().catch((e) => hata(e.message));
+</script>
+</body>
+</html>
