@@ -12,6 +12,7 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
 .kart{background:#241c12;border:1px solid #3a2e1c;border-radius:14px;padding:12px;margin-bottom:10px}
 .btn{background:#f6b422;color:#1b1408;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer}
 .btn.ikincil{background:transparent;color:#fff0cf;border:1px solid #3a2e1c}
+.btn:disabled{opacity:.45}
 .muted{color:#b9a57e;font-size:12px}
 .satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3a2e1c}
 .satir:last-child{border-bottom:0}
@@ -24,6 +25,7 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
 .zar{display:inline-flex;width:44px;height:44px;border-radius:10px;background:#fff;color:#1b1408;font-weight:800;font-size:22px;align-items:center;justify-content:center}
 .gizle{display:none}
 #hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#6fe08a;font-size:13px;min-height:18px;text-align:center;font-weight:700}
 </style>
 </head>
 <body>
@@ -50,22 +52,25 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
     <div class="kart" style="text-align:center"><div id="zarAlan"></div></div>
     <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
   </div>
+  <div id="bilgi"></div>
   <div id="hata"></div>
 </div>
 
 <script>
 const CFG = window.ARI_CIFTLIK || null;
 const ODA = window.ARI_ODA || null;
-const TOTAL = 57;
-const START = [0, 13, 26, 39];
 const RENK = ['#e53935', '#43a047', '#fdd835', '#1e88e5'];
 const RENK_AD = ['Kırmızı', 'Yeşil', 'Sarı', 'Mavi'];
+// Her rengin ana yoldaki başlangıç karesi (0..51 arası)
+const START = [0, 13, 26, 39];
+const BITIS = 57;
 
-let masaId = null, masa = null, durumTimer = null, benimZar = null, kilit = false;
+let masaId = null, masa = null, durumTimer = null, kilit = false;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2500); }
 
 async function rpc(ad, body) {
   if (!CFG) throw new Error('Oturum yok, uygulamadan tekrar gir');
@@ -85,57 +90,26 @@ async function tablo(yol) {
   return r.json();
 }
 
-// ---------- Tahta geometrisi ----------
+// ---------- Tahta geometrisi (yalnız gösterim) ----------
+// Ana yol: 52 kare, çevresinde. Her renk 51 adım yürür, sonra kendi kolunda 52..56 karesi ve bitiş 57.
 function yolKoord(t) {
   const ang = (t / 52) * 2 * Math.PI - Math.PI / 2;
   return { x: 170 + 130 * Math.cos(ang), y: 170 + 130 * Math.sin(ang) };
 }
 function kolKoord(ci, k) {
+  // k: 51..57 arası kendi kolu (51 = yolun son karesi, 57 = bitiş)
   const ang = (START[ci] / 52) * 2 * Math.PI - Math.PI / 2;
   const r = 130 - (k - 50) * 21;
   return { x: 170 + r * Math.cos(ang), y: 170 + r * Math.sin(ang) };
 }
+// Taşın tahtadaki konumu: -1 = bekliyor (köşe kutuları), 0..50 = ana yol, 51..57 = kendi kolu
 function konum(ci, p, k) {
   if (k === -1) {
     const bx = [60, 280, 280, 60], by = [60, 60, 280, 280];
     return { x: bx[ci] + (p % 2) * 22 - 11, y: by[ci] + Math.floor(p / 2) * 22 - 11 };
   }
   if (k >= 0 && k <= 50) return yolKoord((START[ci] + k) % 52);
-  if (k >= 51 && k <= 56) return kolKoord(ci, k);
-  return { x: 170 + (p % 2) * 16 - 8, y: 170 + Math.floor(p / 2) * 16 - 8 };
-}
-
-// ---------- Kurallar ----------
-// pos[ci][p]: -1 = bekliyor, 0..50 = ana yol, 51..56 = kendi kolu, 57 = bitiş
-function hamleler(pos, ci, zar) {
-  const liste = [];
-  pos[ci].forEach((k, p) => {
-    if (k === -1) { if (zar === 6) liste.push(p); }
-    else if (k + zar <= TOTAL) liste.push(p);
-  });
-  return liste;
-}
-function yeniPos(pos, ci, p, zar) {
-  const np = pos.map((a) => a.slice());
-  let k = np[ci][p];
-  k = k === -1 ? 0 : k + zar;
-  np[ci][p] = k;
-  if (k >= 0 && k <= 50) {
-    const t = (START[ci] + k) % 52;
-    for (let c = 0; c < np.length; c++) {
-      if (c === ci) continue;
-      for (let q = 0; q < 4; q++) {
-        const kk = np[c][q];
-        if (kk >= 0 && kk <= 50 && (START[c] + kk) % 52 === t) np[c][q] = -1;
-      }
-    }
-  }
-  return np;
-}
-
-// ---------- Yardımcılar ----------
-function benIndex() {
-  return masa ? masa.oyuncular.findIndex((o) => o.id === CFG.uid) : -1;
+  return kolKoord(ci, k);
 }
 
 // ---------- Lobi ----------
@@ -176,7 +150,6 @@ async function girMasa(id) {
       await rpc('masa_katil', { p_masa: id });
     }
     masaId = id;
-    benimZar = null;
     $('lobi').classList.add('gizle');
     $('masa').classList.remove('gizle');
     await yenile();
@@ -188,7 +161,7 @@ async function girMasa(id) {
 function lobiyeDon() {
   clearInterval(durumTimer);
   durumTimer = null;
-  masaId = null; masa = null; benimZar = null;
+  masaId = null; masa = null;
   $('masa').classList.add('gizle');
   $('lobi').classList.remove('gizle');
   lobiYukle();
@@ -199,23 +172,24 @@ async function yenile() {
   if (!masaId) return;
   try {
     masa = await rpc('masa_durumu', { p_masa: masaId });
-    if (masa.sira_kullanici !== CFG.uid) benimZar = null;
     render();
   } catch (e) { hata(e.message); }
 }
 
-function render() {
-  if (!masa) return;
-  const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
-  $('baslik').innerHTML = '<b>Masa #' + masaId + '</b> · ' + durumYazi;
-  $('oyuncular').innerHTML = masa.oyuncular.map((o, i) =>
-    '<div class="satir"><span class="tas" style="position:static;width:16px;height:16px;background:' + RENK[i] + '"></span>' +
-    '<div class="grow">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</div>' +
-    '<span class="muted">' + RENK_AD[i] + '</span></div>'
-  ).join('');
-  tahtaCiz();
-  aksiyonCiz();
-  zarCiz();
+function benIndex() { return masa ? masa.oyuncular.findIndex((o) => o.id === CFG.uid) : -1; }
+function benimSira() { return !!masa && masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid; }
+function pos() { return masa && masa.durum_json ? masa.durum_json.pos : null; }
+function zar() { return masa && masa.durum_json ? masa.durum_json.zar : null; }
+
+// Gösterim için: hangi taşlar bu zarla oynanabilir (sunucu yine doğrular)
+function oynanabilirler(p, ci, z) {
+  const liste = [];
+  if (!p || !p[ci] || z == null) return liste;
+  p[ci].forEach((k, t) => {
+    if (k === -1 && z === 6) liste.push(t);
+    else if (k >= 0 && k + z <= BITIS) liste.push(t);
+  });
+  return liste;
 }
 
 function tahtaCiz() {
@@ -248,24 +222,37 @@ function tahtaCiz() {
       t.appendChild(d);
     }
   }
-  const st = masa && masa.durum_json;
-  if (!st || !st.pos) return;
+  const p = pos();
+  if (!p) return;
   const ben = benIndex();
-  const secil = (masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid && benimZar != null && ben >= 0)
-    ? hamleler(st.pos, ben, benimZar) : [];
-  st.pos.forEach((kollar, ci) => {
-    kollar.forEach((k, p) => {
-      const { x, y } = konum(ci, p, k);
+  const secil = benimSira() && zar() != null ? oynanabilirler(p, ben, zar()) : [];
+  p.forEach((kollar, ci) => {
+    kollar.forEach((k, q) => {
+      const { x, y } = konum(ci, q, k);
       const e = document.createElement('div');
-      const parlak = ci === ben && secil.includes(p);
+      const parlak = ci === ben && secil.includes(q);
       e.className = 'tas renk-' + ci + (parlak ? ' secilebilir' : '');
-      e.textContent = p + 1;
+      e.textContent = q + 1;
       e.style.left = x + 'px';
       e.style.top = y + 'px';
-      if (parlak) e.onclick = () => tasTikla(p);
+      if (parlak) e.onclick = () => tasOyna(q);
       t.appendChild(e);
     });
   });
+}
+
+function render() {
+  if (!masa) return;
+  const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
+  $('baslik').innerHTML = '<b>Masa #' + masaId + '</b> · ' + durumYazi;
+  $('oyuncular').innerHTML = masa.oyuncular.map((o, i) =>
+    '<div class="satir"><span class="tas" style="position:static;width:16px;height:16px;background:' + RENK[i] + '"></span>' +
+    '<div class="grow">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</div>' +
+    '<span class="muted">' + RENK_AD[i] + '</span></div>'
+  ).join('');
+  tahtaCiz();
+  aksiyonCiz();
+  zarCiz();
 }
 
 function aksiyonCiz() {
@@ -279,49 +266,61 @@ function aksiyonCiz() {
     b.onclick = fn;
     a.appendChild(b);
   };
+  const not = (t) => a.insertAdjacentHTML('beforeend', '<span class="muted">' + t + '</span>');
   const sahibiMi = masa.sahip_id === CFG.uid;
   if (masa.durum === 'bekliyor') {
     if (sahibiMi && masa.oyuncular.length >= 2) ekle('Oyunu başlat', baslat);
-    else if (!sahibiMi) a.insertAdjacentHTML('beforeend', '<span class="muted">Sahibin başlatması bekleniyor…</span>');
+    else if (!sahibiMi) not('Sahibin başlatması bekleniyor…');
     ekle(sahibiMi ? 'Masayı kapat' : 'Masadan ayrıl', ayril, true);
   } else if (masa.durum === 'oynaniyor') {
-    if (!masa.durum_json || !masa.durum_json.pos) {
-      a.insertAdjacentHTML('beforeend', '<span class="muted">Hazırlanıyor…</span>');
-      return;
-    }
-    if (masa.sira_kullanici === CFG.uid) {
-      if (benimZar == null && !masa.tur_hareket) ekle('🎲 Zar at', zarAt);
-      else if (benimZar == null && masa.tur_hareket) ekle('Turu pas geç', turPas, true);
-      else a.insertAdjacentHTML('beforeend', '<span class="muted">Hamle seç: parlayan taşa dokun</span>');
+    if (!pos()) { not('Hazırlanıyor…'); return; }
+    if (benimSira()) {
+      const z = zar();
+      if (!masa.tur_hareket) ekle('🎲 Zar at', zarAt);
+      else if (z != null) {
+        if (oynanabilirler(pos(), benIndex(), z).length) not('Parlayan taşa dokun');
+        else ekle('Pas geç', pasGec, true);
+      }
     } else {
       const s = masa.oyuncular.find((o) => o.id === masa.sira_kullanici);
-      a.insertAdjacentHTML('beforeend', '<span class="muted">Sıra: ' + esc(s ? s.nickname : '') + '</span>');
+      not('Sıra: ' + esc(s ? s.nickname : ''));
     }
   } else {
     const k = masa.oyuncular.find((o) => o.id === masa.kazanan);
-    a.insertAdjacentHTML('beforeend', '<span class="muted">🏆 Kazanan: ' + esc(k ? k.nickname : '') +
-      ' · +' + masa.odul + ' 🪙 coin</span>');
+    not('🏆 Kazanan: ' + esc(k ? k.nickname : '') + ' · +' + masa.odul + ' 🪙 coin');
   }
 }
 
 function zarCiz() {
-  const z = benimZar != null ? benimZar : (masa && masa.durum_json && masa.durum_json.zar);
-  $('zarAlan').innerHTML = z ? '<span class="zar">' + z + '</span><div class="muted">Son zar</div>'
-                             : '<span class="muted">Henüz zar atılmadı</span>';
+  const z = zar();
+  $('zarAlan').innerHTML = z != null
+    ? '<span class="zar">' + z + '</span><div class="muted">Son zar</div>'
+    : '<span class="muted">Henüz zar atılmadı</span>';
 }
 
-async function hamleGonder(pos, z) {
-  const sonraki = z !== 6;
-  await rpc('masa_hamle', { p_masa: masaId, p_durum: { pos: pos, zar: z }, p_sonraki: sonraki });
+async function islem(fn) {
+  if (kilit) return;
+  kilit = true;
+  try { await fn(); } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
 }
+const zarAt = () => islem(() => rpc('ludo_zar', { p_masa: masaId }));
+const pasGec = () => islem(() => rpc('ludo_hamle', { p_masa: masaId, p_tas: -1 }));
+const baslat = () => islem(async () => {
+  await rpc('masa_baslat', { p_masa: masaId });
+  // Her oyuncunun 4 taşı da bekliyor (-1) ile başlar
+  const init = masa.oyuncular.map(() => [-1, -1, -1, -1]);
+  await rpc('masa_hamle', { p_masa: masaId, p_durum: { pos: init }, p_sonraki: false });
+});
 
-async function baslat() {
+async function tasOyna(t) {
   if (kilit) return;
   kilit = true;
   try {
-    await rpc('masa_baslat', { p_masa: masaId });
-    const init = masa.oyuncular.map(() => [-1, -1, -1, -1]);
-    await hamleGonder(init, null);
+    const s = await rpc('ludo_hamle', { p_masa: masaId, p_tas: t });
+    if (s && s.vurulan && s.vurulan.length) bilgi('💥 ' + s.vurulan.length + ' taş vuruldu!');
+    else if (s && s.bitti) bilgi('🏆 Oyun bitti!');
   } catch (e) { hata(e.message); }
   kilit = false;
   await yenile();
@@ -332,54 +331,6 @@ async function ayril() {
     await rpc('masa_ayril', { p_masa: masaId });
     lobiyeDon();
   } catch (e) { hata(e.message); }
-}
-
-async function zarAt() {
-  if (kilit) return;
-  kilit = true;
-  try {
-    const z = await rpc('masa_zar', { p_masa: masaId });
-    benimZar = z;
-    const ci = benIndex();
-    const pos = masa.durum_json.pos;
-    if (hamleler(pos, ci, z).length === 0) {
-      await hamleGonder(pos, z);
-      benimZar = null;
-    }
-  } catch (e) { hata(e.message); }
-  kilit = false;
-  await yenile();
-}
-
-async function tasTikla(p) {
-  if (kilit || benimZar == null) return;
-  kilit = true;
-  try {
-    const ci = benIndex();
-    const z = benimZar;
-    const pos = masa.durum_json.pos;
-    if (!hamleler(pos, ci, z).includes(p)) throw new Error('Bu taş hareket edemez');
-    const np = yeniPos(pos, ci, p, z);
-    if (np[ci].every((k) => k === TOTAL)) {
-      await rpc('masa_bitir', { p_masa: masaId, p_kazanan: CFG.uid });
-    } else {
-      await hamleGonder(np, z);
-    }
-    benimZar = null;
-  } catch (e) { hata(e.message); }
-  kilit = false;
-  await yenile();
-}
-
-async function turPas() {
-  if (kilit) return;
-  kilit = true;
-  try {
-    await hamleGonder(masa.durum_json.pos, null);
-    benimZar = null;
-  } catch (e) { hata(e.message); }
-  kilit = false;
-  await yenile();
 }
 
 lobiYukle().catch((e) => hata(e.message));
