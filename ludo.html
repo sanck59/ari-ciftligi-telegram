@@ -12,6 +12,7 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
 .kart{background:#241c12;border:1px solid #3a2e1c;border-radius:14px;padding:12px;margin-bottom:10px}
 .btn{background:#f6b422;color:#1b1408;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer}
 .btn.ikincil{background:transparent;color:#fff0cf;border:1px solid #3a2e1c}
+.btn.tehlike{background:transparent;color:#e8743b;border:1px solid #e8743b}
 .btn:disabled{opacity:.45}
 .muted{color:#b9a57e;font-size:12px}
 .satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3a2e1c}
@@ -50,7 +51,10 @@ h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
     </div>
     <div class="kart"><div id="tahta"></div></div>
     <div class="kart" style="text-align:center"><div id="zarAlan"></div></div>
-    <div class="kart"><button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button></div>
+    <div class="kart">
+      <button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button>
+      <button class="btn tehlike" id="ayrilBtn" onclick="ayrilOyun()">Oyundan ayrıl</button>
+    </div>
   </div>
   <div id="bilgi"></div>
   <div id="hata"></div>
@@ -61,7 +65,6 @@ const CFG = window.ARI_CIFTLIK || null;
 const ODA = window.ARI_ODA || null;
 const RENK = ['#e53935', '#43a047', '#fdd835', '#1e88e5'];
 const RENK_AD = ['Kırmızı', 'Yeşil', 'Sarı', 'Mavi'];
-// Her rengin ana yoldaki başlangıç karesi (0..51 arası)
 const START = [0, 13, 26, 39];
 const BITIS = 57;
 
@@ -90,19 +93,15 @@ async function tablo(yol) {
   return r.json();
 }
 
-// ---------- Tahta geometrisi (yalnız gösterim) ----------
-// Ana yol: 52 kare, çevresinde. Her renk 51 adım yürür, sonra kendi kolunda 52..56 karesi ve bitiş 57.
 function yolKoord(t) {
   const ang = (t / 52) * 2 * Math.PI - Math.PI / 2;
   return { x: 170 + 130 * Math.cos(ang), y: 170 + 130 * Math.sin(ang) };
 }
 function kolKoord(ci, k) {
-  // k: 51..57 arası kendi kolu (51 = yolun son karesi, 57 = bitiş)
   const ang = (START[ci] / 52) * 2 * Math.PI - Math.PI / 2;
   const r = 130 - (k - 50) * 21;
   return { x: 170 + r * Math.cos(ang), y: 170 + r * Math.sin(ang) };
 }
-// Taşın tahtadaki konumu: -1 = bekliyor (köşe kutuları), 0..50 = ana yol, 51..57 = kendi kolu
 function konum(ci, p, k) {
   if (k === -1) {
     const bx = [60, 280, 280, 60], by = [60, 60, 280, 280];
@@ -112,7 +111,6 @@ function konum(ci, p, k) {
   return kolKoord(ci, k);
 }
 
-// ---------- Lobi ----------
 async function lobiYukle() {
   hata('');
   if (!ODA) { $('masalar').innerHTML = '<div class="muted">Oda bilgisi alınamadı. Oyunu odadan aç.</div>'; return; }
@@ -167,7 +165,27 @@ function lobiyeDon() {
   lobiYukle();
 }
 
-// ---------- Masa ----------
+async function ayrilOyun() {
+  if (!masaId) return;
+  if (!confirm || true) {
+    // WebView'da confirm çalışmadığı için: önce uyarı, ikinci dokunuşta ayrılır
+    if (!ayrilOyun._hazir) {
+      ayrilOyun._hazir = Date.now();
+      bilgi('Ayrılmak için bir kez daha dokun');
+      setTimeout(() => { ayrilOyun._hazir = 0; }, 4000);
+      return;
+    }
+    if (Date.now() - ayrilOyun._hazir > 4000) { ayrilOyun._hazir = 0; return ayrilOyun(); }
+  }
+  ayrilOyun._hazir = 0;
+  try {
+    const s = await rpc('masa_oyun_ortasi_ayril', { p_masa: masaId });
+    if (s && s.bitti) bilgi(s.kazanan ? 'Masa bitti, rakip ayrıldı.' : 'Masa kapandı.');
+    else bilgi('Masadan ayrıldın');
+    lobiyeDon();
+  } catch (e) { hata(e.message); }
+}
+
 async function yenile() {
   if (!masaId) return;
   try {
@@ -181,7 +199,6 @@ function benimSira() { return !!masa && masa.durum === 'oynaniyor' && masa.sira_
 function pos() { return masa && masa.durum_json ? masa.durum_json.pos : null; }
 function zar() { return masa && masa.durum_json ? masa.durum_json.zar : null; }
 
-// Gösterim için: hangi taşlar bu zarla oynanabilir (sunucu yine doğrular)
 function oynanabilirler(p, ci, z) {
   const liste = [];
   if (!p || !p[ci] || z == null) return liste;
@@ -309,7 +326,6 @@ const zarAt = () => islem(() => rpc('ludo_zar', { p_masa: masaId }));
 const pasGec = () => islem(() => rpc('ludo_hamle', { p_masa: masaId, p_tas: -1 }));
 const baslat = () => islem(async () => {
   await rpc('masa_baslat', { p_masa: masaId });
-  // Her oyuncunun 4 taşı da bekliyor (-1) ile başlar
   const init = masa.oyuncular.map(() => [-1, -1, -1, -1]);
   await rpc('masa_hamle', { p_masa: masaId, p_durum: { pos: init }, p_sonraki: false });
 });
