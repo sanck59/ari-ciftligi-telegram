@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Okey101</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:#16110b;color:#fff0cf;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
+#app{padding:12px}
+h2{margin:6px 0 10px;text-align:center;font-size:18px;color:#f6b422}
+.kart{background:#241c12;border:1px solid #3a2e1c;border-radius:14px;padding:12px;margin-bottom:10px}
+.btn{background:#f6b422;color:#1b1408;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer}
+.btn.ikincil{background:transparent;color:#fff0cf;border:1px solid #3a2e1c}
+.btn.tehlike{background:transparent;color:#e8743b;border:1px solid #e8743b}
+.btn:disabled{opacity:.45}
+.muted{color:#b9a57e;font-size:12px}
+.satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #3a2e1c}
+.satir:last-child{border-bottom:0}
+.grow{flex:1}
+.el{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:8px 0}
+.tas{width:40px;height:54px;background:#fff8e7;color:#1b1408;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;box-shadow:0 2px 4px rgba(0,0,0,.4);border:2px solid transparent;cursor:pointer;user-select:none}
+.tas .n{font-size:17px}
+.tas .r{font-size:9px}
+.tas.secili{border-color:#f6b422;transform:translateY(-6px)}
+.tas.joker{background:linear-gradient(135deg,#fff8e7,#c9b98a)}
+.tas.kirmizi .n{color:#e53935}
+.tas.sari .n{color:#c98f00}
+.tas.mavi .n{color:#1e88e5}
+.tas.siyah .n{color:#1b1408}
+.grup{display:flex;gap:4px;justify-content:center;align-items:center;margin:4px 0;padding:6px;border:1px dashed #3a2e1c;border-radius:10px}
+#hata{color:#e8743b;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#6fe08a;font-size:13px;min-height:18px;text-align:center;font-weight:700}
+.gizle{display:none}
+</style>
+</head>
+<body>
+<div id="app">
+  <h2>🃏 Okey101</h2>
+  <div id="lobi">
+    <div class="kart">
+      <div class="muted">Bu odadaki masalar</div>
+      <div id="masalar"></div>
+      <div style="margin-top:8px">
+        <button class="btn" onclick="masaAc(2)">2 kişilik aç</button>
+        <button class="btn" onclick="masaAc(3)">3 kişilik aç</button>
+        <button class="btn" onclick="masaAc(4)">4 kişilik aç</button>
+      </div>
+    </div>
+  </div>
+  <div id="masa" class="gizle">
+    <div class="kart">
+      <div id="baslik"></div>
+      <div id="oyuncular"></div>
+      <div id="aksiyon" style="margin-top:8px"></div>
+    </div>
+    <div class="kart" style="text-align:center">
+      <div class="muted">Deste: <span id="deste">0</span> · Atılan en üst taş</div>
+      <div id="atilan" style="margin-top:6px"></div>
+      <div style="margin-top:8px" id="cekAlan"></div>
+    </div>
+    <div class="kart">
+      <div class="muted" style="text-align:center">Elin <span id="sayi"></span></div>
+      <div class="el" id="el"></div>
+      <div class="muted" id="ipucu" style="text-align:center"></div>
+      <div style="text-align:center" id="eylem"></div>
+    </div>
+    <div class="kart">
+      <div class="muted">Gruplar (eli bitirmek için seçilen taşlar)</div>
+      <div id="gruplar"></div>
+      <div style="text-align:center;margin-top:6px">
+        <button class="btn ikincil" onclick="grupSifirla()">Grupları sıfırla</button>
+      </div>
+    </div>
+    <div class="kart">
+      <button class="btn ikincil" onclick="lobiyeDon()">← Masalara dön</button>
+      <button class="btn tehlike" onclick="ayrilOyun()">Oyundan ayrıl</button>
+    </div>
+  </div>
+  <div id="bilgi"></div>
+  <div id="hata"></div>
+</div>
+
+<script>
+const CFG = window.ARI_CIFTLIK || null;
+const ODA = window.ARI_ODA || null;
+const RENK_SINIF = ['kirmizi', 'sari', 'mavi', 'siyah'];
+const RENK_AD = ['Kırmızı', 'Sarı', 'Mavi', 'Siyah'];
+
+let masaId = null, masa = null, durumTimer = null, kilit = false;
+let secili = [];      // elde seçilen taş id'leri
+let gruplar = [];     // oluşturulan gruplar (taş id listeleri)
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2500); }
+
+async function rpc(ad, body) {
+  if (!CFG) throw new Error('Oturum yok, uygulamadan tekrar gir');
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + ad, {
+    method: 'POST',
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Hata ' + r.status));
+  return j;
+}
+async function tablo(yol) {
+  const r = await fetch(CFG.url + '/rest/v1/' + yol, {
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token }
+  });
+  return r.json();
+}
+
+// ---------- Taş gösterimi (sunucudaki kodlamayla aynı) ----------
+// id 0..103: renk = floor(id/26), sayı = (id%26)%13+1. id 104,105: joker.
+const renkOf = (id) => Math.floor(id / 26);
+const sayiOf = (id) => (id % 26) % 13 + 1;
+const jokerMi = (id) => id >= 104;
+
+function tasHtml(id, ekSinif, tikla) {
+  const joker = jokerMi(id);
+  const sinif = joker ? 'joker' : RENK_SINIF[renkOf(id)];
+  const yazi = joker ? '★' : sayiOf(id);
+  const alt = joker ? 'JOKER' : RENK_AD[renkOf(id)];
+  return '<div class="tas ' + sinif + ' ' + (ekSinif || '') + '"' + (tikla ? ' onclick="' + tikla + '"' : '') + '>' +
+    '<div class="n">' + yazi + '</div><div class="r">' + alt + '</div></div>';
+}
+
+// Eli sırala: önce renk, sonra sayı (jokerler sonda)
+function sirali(liste) {
+  return liste.slice().sort((a, b) => {
+    const ja = jokerMi(a), jb = jokerMi(b);
+    if (ja !== jb) return ja ? 1 : -1;
+    if (ja && jb) return a - b;
+    if (renkOf(a) !== renkOf(b)) return renkOf(a) - renkOf(b);
+    return sayiOf(a) - sayiOf(b);
+  });
+}
+
+// ---------- Lobi ----------
+async function lobiYukle() {
+  hata('');
+  if (!ODA) { $('masalar').innerHTML = '<div class="muted">Oda bilgisi alınamadı. Oyunu odadan aç.</div>'; return; }
+  const liste = await tablo('oyun_masalari?oda_id=eq.' + ODA + '&oyun=eq.okey101&durum=neq.bitti&select=id,durum,max_oyuncu,sahip_id&order=olusturma.desc');
+  if (!Array.isArray(liste) || liste.length === 0) {
+    $('masalar').innerHTML = '<div class="muted">Açık masa yok. Aşağıdan bir masa aç.</div>';
+    return;
+  }
+  const oyuncular = await Promise.all(liste.map((m) => tablo('oyun_masa_oyuncular?masa_id=eq.' + m.id + '&select=kullanici_id')));
+  $('masalar').innerHTML = liste.map((m, i) => {
+    const n = oyuncular[i].length;
+    const icinde = oyuncular[i].some((x) => x.kullanici_id === CFG.uid);
+    const etiket = m.durum === 'bekliyor' ? (n + '/' + m.max_oyuncu + ' bekliyor') : 'Oynanıyor';
+    const bosYok = !icinde && (m.durum === 'oynaniyor' || n >= m.max_oyuncu);
+    const buton = bosYok ? '' : '<button class="btn" onclick="girMasa(' + m.id + ')">' + (icinde ? 'Aç' : 'Katıl') + '</button>';
+    return '<div class="satir"><div class="grow">Masa #' + m.id + '<div class="muted">' + etiket + '</div></div>' + buton + '</div>';
+  }).join('');
+}
+
+async function masaAc(n) {
+  hata('');
+  try {
+    const id = await rpc('masa_ac', { p_oda: ODA, p_oyun: 'okey101', p_max: n, p_mod: 'klasik' });
+    await girMasa(id);
+  } catch (e) { hata(e.message); }
+}
+
+async function girMasa(id) {
+  hata('');
+  try {
+    const d = await rpc('masa_durumu', { p_masa: id });
+    const icinde = d.oyuncular.some((o) => o.id === CFG.uid);
+    if (!icinde) {
+      if (d.durum !== 'bekliyor') throw new Error('Bu masa oynanıyor');
+      await rpc('masa_katil', { p_masa: id });
+    }
+    masaId = id;
+    $('lobi').classList.add('gizle');
+    $('masa').classList.remove('gizle');
+    await yenile();
+    clearInterval(durumTimer);
+    durumTimer = setInterval(yenile, 1500);
+  } catch (e) { hata(e.message); }
+}
+
+function lobiyeDon() {
+  clearInterval(durumTimer);
+  durumTimer = null;
+  masaId = null; masa = null;
+  secili = []; gruplar = [];
+  $('masa').classList.add('gizle');
+  $('lobi').classList.remove('gizle');
+  lobiYukle();
+}
+
+async function ayrilOyun() {
+  if (!masaId) return;
+  const simdi = Date.now();
+  if (!ayrilOyun._t || simdi - ayrilOyun._t > 4000) {
+    ayrilOyun._t = simdi;
+    bilgi('Ayrılmak için bir kez daha dokun');
+    return;
+  }
+  ayrilOyun._t = 0;
+  try {
+    const s = await rpc('masa_oyun_ortasi_ayril', { p_masa: masaId });
+    if (s && s.bitti) bilgi(s.kazanan ? 'Masa bitti, rakip ayrıldı.' : 'Masa kapandı.');
+    else bilgi('Masadan ayrıldın');
+    lobiyeDon();
+  } catch (e) { hata(e.message); }
+}
+
+async function yenile() {
+  if (!masaId) return;
+  try {
+    masa = await rpc('masa_durumu', { p_masa: masaId });
+    render();
+  } catch (e) { hata(e.message); }
+}
+
+function benimSira() { return !!masa && masa.durum === 'oynaniyor' && masa.sira_kullanici === CFG.uid; }
+function tasDurumu() { return masa && masa.durum_json ? masa.durum_json : {}; }
+
+// ---------- Çizim ----------
+function render() {
+  if (!masa) return;
+  const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
+  $('baslik').innerHTML = '<b>Masa #' + masaId + '</b> · ' + durumYazi;
+  $('oyuncular').innerHTML = masa.oyuncular.map((o, i) =>
+    '<div class="satir"><div class="grow">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</div>' +
+    '<span class="muted">' + (o.el_sayisi || 0) + ' taş</span>' +
+    (masa.durum === 'oynaniyor' && o.id === masa.sira_kullanici ? '<span>👈</span>' : '') + '</div>'
+  ).join('');
+  $('deste').textContent = masa.deste_sayisi;
+
+  const at = (tasDurumu().atilan || []);
+  $('atilan').innerHTML = at.length
+    ? tasHtml(at[at.length - 1], '', '')
+    : '<span class="muted">Henüz atılan yok</span>';
+
+  elCiz();
+  gruplarCiz();
+  aksiyonCiz();
+}
+
+function elCiz() {
+  const el = masa.el || [];
+  const sirali_el = sirali(el);
+  $('sayi').textContent = el.length;
+  $('el').innerHTML = sirali_el.map((id) =>
+    tasHtml(id, secili.includes(id) ? 'secili' : '', 'tasTikla(' + id + ')')
+  ).join('');
+  $('ipucu').textContent = benimSira()
+    ? (tasDurumu().atilan !== undefined && !masa.tur_hareket ? 'Desteden ya da atılandan çek' : 'Atmak için bir taş seç, gruplamak için birden fazla')
+    : '';
+}
+
+function gruplarCiz() {
+  if (gruplar.length === 0) {
+    $('gruplar').innerHTML = '<div class="muted" style="text-align:center">Henüz grup yok</div>';
+    return;
+  }
+  $('gruplar').innerHTML = gruplar.map((g, i) =>
+    '<div class="grup">' + g.map((id) => tasHtml(id, '', '')).join('') +
+    '<button class="btn ikincil" onclick="grupSil(' + i + ')">Sil</button></div>'
+  ).join('');
+}
+
+function aksiyonCiz() {
+  const a = $('aksiyon');
+  a.innerHTML = '';
+  const ekle = (yazi, fn, ikincil) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (ikincil ? ' ikincil' : '');
+    b.textContent = yazi;
+    b.onclick = fn;
+    a.appendChild(b);
+  };
+  const not = (t) => a.insertAdjacentHTML('beforeend', '<span class="muted">' + t + '</span>');
+  const sahibi = masa.sahip_id === CFG.uid;
+  if (masa.durum === 'bekliyor') {
+    if (sahibi && masa.oyuncular.length >= 2) ekle('Oyunu başlat', baslat);
+    else if (!sahibi) not('Sahibin başlatması bekleniyor…');
+    ekle(sahibi ? 'Masayı kapat' : 'Masadan ayrıl', ayril, true);
+  } else if (masa.durum === 'oynaniyor') {
+    if (!benimSira()) {
+      const s = masa.oyuncular.find((o) => o.id === masa.sira_kullanici);
+      not('Sıra: ' + esc(s ? s.nickname : ''));
+    }
+  } else {
+    const k = masa.oyuncular.find((o) => o.id === masa.kazanan);
+    not('🏆 Kazanan: ' + esc(k ? k.nickname : '') + ' · +' + masa.odul + ' 🪙 coin');
+  }
+
+  // Sıra bendeyse eylem düğmeleri
+  const eylem = $('eylem');
+  eylem.innerHTML = '';
+  const dugme = (yazi, fn, ikincil) => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (ikincil ? ' ikincil' : '');
+    b.textContent = yazi;
+    b.onclick = fn;
+    eylem.appendChild(b);
+  };
+  const cekAlan = $('cekAlan');
+  cekAlan.innerHTML = '';
+  if (benimSira()) {
+    if (!masa.tur_hareket) {
+      const cb = document.createElement('button');
+      cb.className = 'btn'; cb.textContent = '🃏 Desteden çek';
+      cb.onclick = () => cek('deste');
+      cekAlan.appendChild(cb);
+      const ab = document.createElement('button');
+      ab.className = 'btn'; ab.textContent = '⬆ Atılandan çek';
+      ab.onclick = () => cek('atilan');
+      cekAlan.appendChild(ab);
+    } else {
+      dugme('Seçili taşı at', at1, false);
+      dugme('Seçilenlerle grup ekle', grupEkle, true);
+      dugme('Eli bitir', bitir, false);
+    }
+  }
+}
+
+// ---------- Eylemler ----------
+function tasTikla(id) {
+  if (!benimSira() || !masa.tur_hareket) { bilgi('Önce taş çek'); return; }
+  secili = secili.includes(id) ? secili.filter((x) => x !== id) : secili.concat([id]);
+  render();
+}
+
+function grupSifirla() { gruplar = []; render(); }
+function grupSil(i) { gruplar.splice(i, 1); render(); }
+
+function grupEkle() {
+  if (secili.length < 3) { hata('Grup için en az 3 taş seç'); return; }
+  gruplar.push(secili.slice());
+  secili = [];
+  hata('');
+  render();
+}
+
+async function at1() {
+  if (secili.length !== 1) { hata('Atmak için tek bir taş seç'); return; }
+  const tas = secili[0];
+  await islem(() => rpc('okey101_at', { p_masa: masaId, p_tas: tas }));
+  secili = []; gruplar = [];
+}
+
+async function cek(kaynak) {
+  await islem(() => rpc('okey101_cek', { p_masa: masaId, p_kaynak: kaynak }));
+  secili = []; gruplar = [];
+}
+
+async function bitir() {
+  // Seçili taşlar da grup olarak eklensin (son grup)
+  let hepsi = gruplar.slice();
+  if (secili.length >= 3) hepsi.push(secili.slice());
+  if (hepsi.length === 0) { hata('Önce grupları oluştur'); return; }
+  await islem(() => rpc('okey101_bitir', { p_masa: masaId, p_gruplar: hepsi }).then((s) => {
+    bilgi('🏆 Elini bitirdin!');
+    return s;
+  }));
+  secili = []; gruplar = [];
+}
+
+const baslat = () => islem(() => rpc('okey101_baslat', { p_masa: masaId }));
+const ayril = () => islem(() => rpc('masa_ayril', { p_masa: masaId }).then(() => lobiyeDon()));
+
+async function islem(fn) {
+  if (kilit) return;
+  kilit = true;
+  try { await fn(); } catch (e) { hata(e.message); }
+  kilit = false;
+  await yenile();
+}
+
+lobiYukle().catch((e) => hata(e.message));
+</script>
+</body>
+</html>
