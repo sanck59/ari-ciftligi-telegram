@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Çay Tarlası</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#0f2a1a;color:#f4ffe8;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
+body{background:linear-gradient(#2e6b3a,#14321d) fixed;min-height:100%}
+#app{padding:10px 10px 28px;max-width:520px;margin:0 auto}
+.panel{background:rgba(10,30,18,.78);border:1px solid #3f8a52;border-radius:16px;padding:10px;margin-bottom:10px}
+.istat{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.stat{flex:1;min-width:90px;background:rgba(0,0,0,.25);border-radius:12px;padding:8px;text-align:center}
+.stat b{display:block;font-size:18px;color:#ffe066}
+.stat span{font-size:11px;color:#bfe6c6}
+.btn{background:linear-gradient(#9be36b,#4fae3a);color:#0f2a12;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer;box-shadow:0 2px 0 #2f7a22}
+.btn.ikincil{background:transparent;color:#f4ffe8;border:1px solid #4f8a5d;box-shadow:none}
+.btn:disabled{opacity:.45}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tarla{position:relative;aspect-ratio:1/1;border-radius:14px;background:linear-gradient(#6b4226,#4a2c17);border:2px solid #8a5a33;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-shadow:inset 0 0 14px rgba(0,0,0,.4);padding:4px}
+.tarla .ikon{font-size:30px;line-height:1}
+.tarla .yazi{font-size:11px;margin-top:4px;color:#f4ffe8}
+.tarla.buyuyor{background:linear-gradient(#7a5a2c,#4f3a1a)}
+.tarla.hazir{border-color:#ffe066;box-shadow:0 0 12px #ffe066}
+.tarla.bos{background:linear-gradient(#8d6a3f,#5d4224)}
+.tarla .cubuk{position:absolute;left:8px;right:8px;bottom:6px;height:6px;background:rgba(0,0,0,.35);border-radius:4px;overflow:hidden}
+.tarla .cubuk i{display:block;height:100%;background:linear-gradient(90deg,#9be36b,#ffe066)}
+.adim{display:flex;gap:6px;justify-content:space-between;align-items:center}
+.adim .bar{flex:1;height:8px;background:rgba(0,0,0,.35);border-radius:6px;overflow:hidden;margin:0 8px}
+.adim .bar i{display:block;height:100%;background:linear-gradient(90deg,#7cc8ff,#ffe066)}
+.gizle{display:none}
+#hata{color:#ff9b7a;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#9be36b;font-size:13px;min-height:18px;text-align:center;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="panel">
+    <div class="istat">
+      <div class="stat"><b id="yaprak">0</b><span>🍃 Yaprak</span></div>
+      <div class="stat"><b id="paket">0</b><span>📦 Paket</span></div>
+      <div class="stat"><b id="gunluk">0</b><span>🪙 Bugün satış</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Fabrika hattı</div>
+    <div class="adim">
+      <span id="asamaYazi" style="font-size:13px">Boşta</span>
+      <div class="bar"><i id="asamaBar" style="width:0%"></i></div>
+      <span id="asamaSure" style="font-size:12px;color:#bfe6c6"></span>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn" id="btnTel">🚡 Teleferik (10 yaprak)</button>
+      <button class="btn ikincil" id="btnSat">🪙 Kantara sat</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="grid" id="tarlalar"></div>
+    <div style="margin-top:8px;text-align:center">
+      <button class="btn ikincil" id="btnYeni">+ Yeni tarla (200 🪙)</button>
+    </div>
+  </div>
+
+  <div class="panel" style="font-size:12px;color:#bfe6c6">
+    Fidan 20 🪙 · Olgunlaşma 10 dk · Hasat 10 yaprak · Teleferik 1 dk · Fabrika 2 dk · 10 yaprak = 1 paket · Paket 40 🪙 · Günlük satış limiti 5.000 🪙
+  </div>
+
+  <div id="bilgi"></div>
+  <div id="hata"></div>
+</div>
+
+<script>
+const CFG = window.ARI_CIFTLIK || null;
+let d = null, alindi = 0, timer = null, kilit = false;
+const $ = (id) => document.getElementById(id);
+function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2400); }
+
+async function rpc(ad, body) {
+  if (!CFG) throw new Error('Oturum yok. Oyunu uygulamadan aç.');
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + ad, {
+    method: 'POST',
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Hata ' + r.status));
+  return j;
+}
+
+function sure(s) { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60), k = s % 60; return m + ':' + (k < 10 ? '0' : '') + k; }
+
+async function yukle() {
+  try {
+    d = await rpc('cay_durum');
+    alindi = Date.now();
+    hata('');
+    ciz();
+  } catch (e) { hata(e.message); }
+}
+
+function kalanSn(v) { return Math.max(0, v - (Date.now() - alindi) / 1000); }
+
+function ciz() {
+  if (!d) return;
+  $('yaprak').textContent = d.yaprak;
+  $('paket').textContent = d.paket;
+  $('gunluk').textContent = d.gunluk_coin + '/' + d.gunluk_limit;
+
+  const tl = $('tarlalar');
+  tl.innerHTML = d.tarlalar.map((t) => {
+    if (t.durum === 'bos') return '<div class="tarla bos" data-i="' + t.i + '"><div class="ikon">🌱</div><div class="yazi">Fidan ek (20 🪙)</div></div>';
+    if (t.durum === 'hazir') return '<div class="tarla hazir" data-i="' + t.i + '"><div class="ikon">🍃</div><div class="yazi">Hasat et</div></div>';
+    return '<div class="tarla buyuyor" data-i="' + t.i + '" data-kalan="' + t.kalan + '"><div class="ikon">🌿</div><div class="yazi">Büyüyor <span class="sn"></span></div><div class="cubuk"><i style="width:0%"></i></div></div>';
+  }).join('');
+  tl.querySelectorAll('.tarla').forEach((el) => {
+    el.onclick = () => {
+      const i = Number(el.dataset.i);
+      const t = d.tarlalar[i];
+      if (t.durum === 'bos') ek(i);
+      else if (t.durum === 'hazir') hasat(i);
+      else bilgi('Henüz olgunlaşmadı');
+    };
+  });
+
+  const asama = d.asama;
+  if (!asama) { $('asamaYazi').textContent = 'Boşta'; $('asamaBar').style.width = '0%'; $('asamaSure').textContent = ''; }
+  else {
+    $('asamaYazi').textContent = asama === 'tel' ? '🚡 Teleferik yolda' : '🏭 Fabrikada işleniyor';
+    $('asamaBar').dataset.toplam = asama === 'tel' ? 60 : 120;
+  }
+  $('btnTel').disabled = !!asama || d.yaprak < 10;
+  $('btnSat').disabled = d.paket <= 0;
+  $('btnYeni').disabled = d.tarla_sayisi >= 12;
+  $('btnYeni').textContent = d.tarla_sayisi >= 12 ? 'Tarla limiti doldu' : '+ Yeni tarla (200 🪙)';
+}
+
+// Sayaçları saniyede bir güncelle
+setInterval(() => {
+  if (!d) return;
+  document.querySelectorAll('.tarla.buyuyor').forEach((el) => {
+    const i = Number(el.dataset.i);
+    const kalan = kalanSn(d.tarlalar[i].kalan);
+    el.querySelector('.sn').textContent = sure(kalan);
+    el.querySelector('.cubuk i').style.width = Math.min(100, (1 - kalan / 600) * 100) + '%';
+  });
+  if (d.asama) {
+    const toplam = d.asama === 'tel' ? 60 : 120;
+    const kalan = kalanSn(d.asama_kalan);
+    $('asamaSure').textContent = sure(kalan);
+    $('asamaBar').style.width = Math.min(100, (1 - kalan / toplam) * 100) + '%';
+  }
+}, 1000);
+
+async function eylem(ad, body, mesaj) {
+  if (kilit) return;
+  kilit = true;
+  try { await rpc(ad, body); if (mesaj) bilgi(mesaj); }
+  catch (e) { hata(e.message); }
+  kilit = false;
+  await yukle();
+}
+
+const ek = (i) => eylem('cay_ek', { p_i: i }, 'Fidan ekildi');
+const hasat = (i) => eylem('cay_hasat', { p_i: i }, '+10 yaprak');
+$('btnTel').onclick = () => eylem('cay_teleferik', {}, 'Teleferik yola çıktı');
+$('btnSat').onclick = async () => {
+  if (kilit) return;
+  kilit = true;
+  try { const s = await rpc('cay_sat'); bilgi('+' + s.kazanc + ' 🪙 kazandın'); }
+  catch (e) { hata(e.message); }
+  kilit = false;
+  await yukle();
+};
+$('btnYeni').onclick = () => eylem('cay_yeni_tarla', {}, 'Yeni tarla açıldı');
+
+yukle();
+timer = setInterval(yukle, 4000);
+</script>
+</body>
+</html>
