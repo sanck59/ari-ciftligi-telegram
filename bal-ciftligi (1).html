@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bal Çiftliği</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#2b1d05;color:#fff6dc;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
+body{background:radial-gradient(circle at 50% 20%,#7a5510 0%,#2b1d05 70%) fixed;min-height:100%}
+#app{padding:10px 10px 28px;max-width:520px;margin:0 auto}
+.panel{background:rgba(35,22,4,.82);border:1px solid #8a6420;border-radius:16px;padding:10px;margin-bottom:10px}
+.stats{display:flex;gap:6px}
+.stat{flex:1;background:rgba(0,0,0,.25);border-radius:12px;padding:7px;text-align:center}
+.stat b{display:block;font-size:16px;color:#ffd85a}
+.stat span{font-size:10px;color:#ffe6a8}
+.tabs{display:flex;gap:4px;margin-bottom:10px;overflow-x:auto}
+.tab{flex:1;min-width:70px;background:transparent;color:#ffe6a8;border:1px solid #8a6420;border-radius:12px;padding:8px 4px;font-size:12px;font-weight:700}
+.tab.aktif{background:#ffd85a;color:#2a1a02;border-color:#ffd85a}
+.btn{background:linear-gradient(#ffd85a,#f2a81b);color:#2a1a02;border:0;border-radius:12px;padding:9px 12px;font-weight:800;font-size:13px;margin:3px 3px 3px 0;cursor:pointer;box-shadow:0 2px 0 #b57a10}
+.btn.ikincil{background:transparent;color:#fff6dc;border:1px solid #8a6420;box-shadow:none}
+.btn:disabled{opacity:.4}
+.muted{color:#e0c488;font-size:12px}
+.satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(138,100,32,.5)}
+.satir:last-child{border-bottom:0}
+.grow{flex:1}
+.bar{height:12px;background:rgba(0,0,0,.35);border-radius:8px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#ffd85a,#f2a81b);width:0%}
+.alanlar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.alan{background:rgba(0,0,0,.3);border:2px solid #8a6420;border-radius:12px;padding:6px 2px;text-align:center}
+.alan.sonuk{opacity:.45;border-style:dashed}
+.alan.acik{border-color:#7ee07e;box-shadow:0 0 8px rgba(126,224,126,.5)}
+.alan .e{font-size:24px;line-height:1.1}
+.alan .a{font-size:10px;color:#ffe6a8}
+.rozet{display:inline-block;padding:2px 8px;border-radius:10px;background:rgba(0,0,0,.35);font-size:11px;font-weight:700}
+#hata{color:#ff9b7a;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#ffe066;font-size:13px;min-height:18px;text-align:center;font-weight:700}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="panel stats">
+    <div class="stat"><b id="depo">0</b><span>🍯 Depo kg</span></div>
+    <div class="stat"><b id="kovan">1</b><span>🐝 Kovan</span></div>
+    <div class="stat"><b id="sezon">-</b><span>🗓 Mevsim</span></div>
+    <div class="stat"><b id="coinGun">0</b><span>🪙 Bugün</span></div>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div id="icerik"></div>
+
+  <div class="panel muted" id="bilgiKutu"></div>
+  <div id="bilgi"></div>
+  <div id="hata"></div>
+</div>
+
+<script>
+const CFG = window.ARI_CIFTLIK || null;
+const SEZON_AD = ['İlkbahar', 'Yaz', 'Sonbahar', 'Kış'];
+const SEKMELER = [
+  { id: 'bahce', ad: 'Bahçe' },
+  { id: 'magaza', ad: 'Mağaza' },
+  { id: 'siparis', ad: 'Siparişler' },
+  { id: 'atolye', ad: 'Atölye' },
+  { id: 'hedef', ad: 'Hedefler' }
+];
+let d = null, alindi = 0, sekme = 'bahce', kilit = false;
+const $ = (id) => document.getElementById(id);
+function hata(m) { $('hata').textContent = m || ''; }
+function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2600); }
+
+async function rpc(ad, body) {
+  if (!CFG) throw new Error('Oturum yok. Oyunu uygulamadan aç.');
+  const r = await fetch(CFG.url + '/rest/v1/rpc/' + ad, {
+    method: 'POST',
+    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {})
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || ('Hata ' + r.status));
+  return j;
+}
+
+async function yukle() {
+  try {
+    d = await rpc('bal_durum');
+    alindi = Date.now();
+    hata('');
+    ciz();
+  } catch (e) { hata(e.message); }
+}
+
+// Depo sunucudan gelen değer + tahmini artış (akıcı gösterim için)
+function anlikDepo() {
+  if (!d) return 0;
+  const gecenDk = (Date.now() - alindi) / 60000;
+  return Math.min(d.kapasite, d.depo + gecenDk * d.dk_uretim);
+}
+
+function sekmeleriCiz() {
+  $('tabs').innerHTML = SEKMELER.map((s) =>
+    '<button class="tab' + (s.id === sekme ? ' aktif' : '') + '" data-tab="' + s.id + '">' + s.ad + '</button>'
+  ).join('');
+  $('tabs').querySelectorAll('.tab').forEach((b) => {
+    b.onclick = () => { sekme = b.dataset.tab; ciz(); };
+  });
+}
+
+function ciz() {
+  if (!d) return;
+  $('kovan').textContent = d.kovan;
+  $('sezon').textContent = SEZON_AD[d.sezon];
+  $('coinGun').textContent = d.gunluk_coin + '/' + d.gunluk_limit;
+  sekmeleriCiz();
+  const k = $('icerik');
+  if (sekme === 'bahce') k.innerHTML = bahceHtml();
+  else if (sekme === 'magaza') k.innerHTML = magazaHtml();
+  else if (sekme === 'siparis') k.innerHTML = siparisHtml();
+  else if (sekme === 'atolye') k.innerHTML = atolyeHtml();
+  else if (sekme === 'hedef') k.innerHTML = hedefHtml();
+  $('bilgiKutu').textContent = 'Pazar: 1 kg = ' + d.fiyat + ' 🪙 · Her 50 kg satışta 1 💎 · Üretim sadece mevsimine uyan çiçeklerde olur · Mevsim 6 saatte bir değişir.';
+  bagla();
+}
+
+function bahceHtml() {
+  const alanlar = d.alanlar.map((a) =>
+    '<div class="alan ' + (a.aktif ? 'acik' : 'sonuk') + '"><div class="e">' + a.emoji +
+    '</div><div class="a">' + a.ad + '</div><div class="a">' + (a.aktif ? 'açıyor' : 'uykuda') + '</div></div>'
+  ).join('');
+  return '<div class="panel">' +
+    '<div class="bar"><i id="barDepo"></i></div>' +
+    '<div class="muted">+' + d.dk_uretim + ' kg/dk · Kapasite ' + d.kapasite + ' kg' +
+    (d.boost_kalan > 0 ? ' · ⚡ Bonus ' + Math.ceil(d.boost_kalan / 60) + ' dk' : '') + '</div>' +
+    '<div style="margin-top:8px"><button class="btn" id="btnSat">Bal sat</button>' +
+    '<button class="btn ikincil" id="btnKovan">Kovan yükselt (' + d.kovan_maliyet + ' 🪙)</button></div>' +
+    '</div>' +
+    '<div class="panel"><div class="muted" style="margin-bottom:6px">Çiçek alanların (' + d.alanlar.length + '/20)</div>' +
+    '<div class="alanlar">' + alanlar + '</div></div>';
+}
+
+function magazaHtml() {
+  return '<div class="panel"><div class="muted" style="margin-bottom:6px">Yeni çiçek alanı için tür seç. Mevsim uymazsa o çiçek uykuda kalır.</div>' +
+    d.turler.map((t) =>
+      '<div class="satir"><div style="font-size:22px">' + t.emoji + '</div>' +
+      '<div class="grow"><div style="font-weight:700">' + t.ad + '</div>' +
+      '<div class="muted">' + SEZON_AD[t.sezon] + ' · hız ' + t.hiz + '</div></div>' +
+      '<button class="btn" data-dik="' + t.tur + '"' + (d.alanlar.length >= 20 ? ' disabled' : '') + '>' + t.fiyat + ' 🪙</button></div>'
+    ).join('') + '</div>';
+}
+
+function siparisHtml() {
+  if (!d.siparisler.length) return '<div class="panel muted">Şu an sipariş yok, yeni siparişler birazdan gelir.</div>';
+  return '<div class="panel">' + d.siparisler.map((s) =>
+    '<div class="satir"><div class="grow"><div style="font-weight:700">' + s.musteri + '</div>' +
+    '<div class="muted">' + s.kg + ' kg ' + s.ad + ' istiyor · ' + Math.ceil(s.kalan / 3600) + ' saat</div>' +
+    '<div class="rozet">+' + s.odul_coin + ' 🪙' + (s.odul_elmas ? ' +' + s.odul_elmas + ' 💎' : '') + '</div></div>' +
+    '<button class="btn" data-teslim="' + s.id + '">Teslim et</button></div>'
+  ).join('') + '</div>';
+}
+
+function atolyeHtml() {
+  return '<div class="panel"><div class="muted" style="margin-bottom:6px">Balı ürüne çevir, ürünü daha yüksek fiyata sat.</div>' +
+    d.urunler.map((u) =>
+      '<div class="satir"><div class="grow"><div style="font-weight:700">' + u.ad + '</div>' +
+      '<div class="muted">' + u.kg_basi + ' kg bal → 1 adet · ' + u.fiyat + ' 🪙 · Envanter: ' + u.adet + '</div></div>' +
+      '<button class="btn ikincil" data-uret="' + u.urun + '" data-adet="1">1 üret</button>' +
+      '<button class="btn ikincil" data-uret="' + u.urun + '" data-adet="10">10 üret</button>' +
+      '<button class="btn" data-urunsat="' + u.urun + '"' + (u.adet < 1 ? ' disabled' : '') + '>Sat</button></div>'
+    ).join('') + '</div>';
+}
+
+function hedefHtml() {
+  return '<div class="panel"><div class="muted" style="margin-bottom:6px">Toplam satılan bal: ' + d.satilan + ' kg</div>' +
+    d.hedefler.map((h) =>
+      '<div class="satir"><div class="grow"><div style="font-weight:700">' + h.esik + ' kg satış</div>' +
+      '<div class="muted">Ödül: ' + h.odul + ' 💎</div></div>' +
+      (h.alindi ? '<span class="rozet">Alındı</span>' :
+        '<button class="btn" data-hedef="1"' + (d.satilan >= h.esik ? '' : ' disabled') + '>Al</button>') + '</div>'
+    ).join('') + '</div>';
+}
+
+function bagla() {
+  const k = $('icerik');
+  const sat = $('btnSat');
+  if (sat) sat.onclick = () => {
+    const kg = Math.floor(anlikDepo() * 10) / 10;
+    eylem('bal_sat', { p_kg: kg }, (s) => '+' + s.coin + ' 🪙' + (s.elmas ? ' +' + s.elmas + ' 💎' : ''));
+  };
+  const kov = $('btnKovan');
+  if (kov) kov.onclick = () => eylem('bal_kovan_yukselt', {}, 'Kovan yükseltildi');
+  k.querySelectorAll('[data-dik]').forEach((b) => {
+    b.onclick = () => eylem('bal_cicek_dik', { p_tur: b.dataset.dik }, 'Çiçek alanı açıldı');
+  });
+  k.querySelectorAll('[data-teslim]').forEach((b) => {
+    b.onclick = () => eylem('bal_siparis_teslim', { p_id: Number(b.dataset.teslim) },
+      (s) => 'Teslim edildi: +' + s.coin + ' 🪙' + (s.elmas ? ' +' + s.elmas + ' 💎' : ''));
+  });
+  k.querySelectorAll('[data-uret]').forEach((b) => {
+    b.onclick = () => eylem('bal_atolye_uret', { p_urun: b.dataset.uret, p_adet: Number(b.dataset.adet) }, 'Üretildi');
+  });
+  k.querySelectorAll('[data-urunsat]').forEach((b) => {
+    b.onclick = () => eylem('bal_urun_sat', { p_urun: b.dataset.urunsat, p_adet: 1 },
+      (s) => '+' + s.coin + ' 🪙 kazandın');
+  });
+  k.querySelectorAll('[data-hedef]').forEach((b) => {
+    b.onclick = () => eylem('bal_hedef_al', {}, (s) => 'Hedef ödülü: +' + s.elmas + ' 💎');
+  });
+}
+
+async function eylem(ad, body, mesaj) {
+  if (kilit) return;
+  kilit = true;
+  try {
+    const s = await rpc(ad, body);
+    if (mesaj) bilgi(typeof mesaj === 'function' ? mesaj(s) : mesaj);
+  } catch (e) { hata(e.message); }
+  kilit = false;
+  await yukle();
+}
+
+// Depo göstergesi saniyede bir akıcı güncellenir
+setInterval(() => {
+  if (!d) return;
+  const dep = anlikDepo();
+  $('depo').textContent = dep.toFixed(1);
+  const bar = $('barDepo');
+  if (bar) bar.style.width = Math.min(100, (dep / d.kapasite) * 100) + '%';
+  const sat = $('btnSat');
+  if (sat) sat.disabled = dep < 0.1;
+}, 500);
+
+yukle();
+setInterval(yukle, 5000);
+</script>
+</body>
+</html>
