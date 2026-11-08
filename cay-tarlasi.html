@@ -5,79 +5,131 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Çay Tarlası</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:#0f2a1a;color:#f4ffe8;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
-body{background:linear-gradient(#2e6b3a,#14321d) fixed;min-height:100%}
-#app{padding:10px 10px 28px;max-width:520px;margin:0 auto}
-.panel{background:rgba(10,30,18,.78);border:1px solid #3f8a52;border-radius:16px;padding:10px;margin-bottom:10px}
-.istat{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
-.stat{flex:1;min-width:90px;background:rgba(0,0,0,.25);border-radius:12px;padding:8px;text-align:center}
-.stat b{display:block;font-size:18px;color:#ffe066}
-.stat span{font-size:11px;color:#bfe6c6}
-.btn{background:linear-gradient(#9be36b,#4fae3a);color:#0f2a12;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer;box-shadow:0 2px 0 #2f7a22}
-.btn.ikincil{background:transparent;color:#f4ffe8;border:1px solid #4f8a5d;box-shadow:none}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:#0e2a18;color:#f4ffe8;font-family:-apple-system,Roboto,Arial,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
+#ust{flex:none;position:relative;line-height:0}
+#sahne{display:block;width:100%;height:auto;max-height:150px}
+#hud{position:absolute;left:6px;right:6px;top:6px;display:flex;gap:6px;line-height:1.1}
+.pil{flex:1;background:linear-gradient(#7a5028,#4a2f14);border:2px solid #c9964a;border-radius:12px;padding:4px 6px;text-align:center;box-shadow:0 2px 0 rgba(0,0,0,.45)}
+.pil b{display:block;font-size:16px;color:#ffd54a;text-shadow:0 1px 0 #000}
+.pil span{font-size:10px;color:#f3dcae}
+#icerik{flex:1;overflow-y:auto;padding:8px 10px 10px;background:linear-gradient(#2f7a3b,#14321d)}
+#hata{flex:none;min-height:0;color:#ffb199;font-size:12px;text-align:center;background:#14321d;padding:0 8px}
+#nav{flex:none;display:flex;background:linear-gradient(#8a5a2b,#4e3016);border-top:3px solid #c9964a;padding-bottom:env(safe-area-inset-bottom,0)}
+.nv{flex:1;border:0;background:transparent;color:#f3dcae;padding:6px 0 5px;font-size:11px;font-weight:700}
+.nv i{display:block;font-style:normal;font-size:21px;line-height:1.2}
+.nv.on{background:linear-gradient(rgba(255,213,74,.28),transparent);color:#fff}
+.kart{background:rgba(8,28,16,.72);border:1px solid #3f8a52;border-radius:16px;padding:10px;margin-bottom:10px}
+.bas{font-size:17px;font-weight:800;color:#ffd54a;text-shadow:0 1px 0 #000;margin-bottom:4px}
+.alt{font-size:12.5px;color:#bfe6c6;margin:0 0 8px;line-height:1.45}
+.say{font-size:14px;margin:6px 0}
+.say b{color:#ffd54a;font-size:18px}
+.durum{font-size:13px;margin:8px 0 4px}
+.bar{height:10px;background:rgba(0,0,0,.4);border-radius:6px;overflow:hidden;margin:4px 0 10px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7cc8ff,#ffe066)}
+.bar.alt2 i{background:linear-gradient(90deg,#9be36b,#ffd54a)}
+.btn{background:linear-gradient(#ffe27a,#f0a81c);color:#3b2406;border:0;border-radius:12px;padding:11px 14px;font-weight:800;font-size:14px;margin:4px 6px 4px 0;box-shadow:0 3px 0 #9a6410}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9a6410}
+.btn.ikincil{background:linear-gradient(#9be36b,#4fae3a);color:#0f2a12;box-shadow:0 3px 0 #2f7a22}
 .btn:disabled{opacity:.45}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tarla{position:relative;aspect-ratio:1/1;border-radius:14px;background:linear-gradient(#6b4226,#4a2c17);border:2px solid #8a5a33;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;box-shadow:inset 0 0 14px rgba(0,0,0,.4);padding:4px}
-.tarla .ikon{font-size:30px;line-height:1}
-.tarla .yazi{font-size:11px;margin-top:4px;color:#f4ffe8}
-.tarla.buyuyor{background:linear-gradient(#7a5a2c,#4f3a1a)}
-.tarla.hazir{border-color:#ffe066;box-shadow:0 0 12px #ffe066}
-.tarla.bos{background:linear-gradient(#8d6a3f,#5d4224)}
-.tarla .cubuk{position:absolute;left:8px;right:8px;bottom:6px;height:6px;background:rgba(0,0,0,.35);border-radius:4px;overflow:hidden}
-.tarla .cubuk i{display:block;height:100%;background:linear-gradient(90deg,#9be36b,#ffe066)}
-.adim{display:flex;gap:6px;justify-content:space-between;align-items:center}
-.adim .bar{flex:1;height:8px;background:rgba(0,0,0,.35);border-radius:6px;overflow:hidden;margin:0 8px}
-.adim .bar i{display:block;height:100%;background:linear-gradient(90deg,#7cc8ff,#ffe066)}
-.gizle{display:none}
-#hata{color:#ff9b7a;font-size:13px;min-height:18px;text-align:center}
-#bilgi{color:#9be36b;font-size:13px;min-height:18px;text-align:center;font-weight:700}
+.sira{display:flex;flex-wrap:wrap}
+.not{font-size:12px;color:#bfe6c6;text-align:center;margin-top:4px}
+.satir{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;border-bottom:1px solid rgba(255,255,255,.1);font-size:13px}
+.satir:last-child{border-bottom:0}
+.rozet{font-size:11px;font-weight:800;border-radius:10px;padding:3px 9px;background:#3a5a44;color:#dff}
+.rozet.h{background:#ffd54a;color:#3b2406}
+.rozet.b{background:#4aa23a;color:#082}
+.rozet.k{background:#444;color:#aaa}
+.izgara{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kutu{background:rgba(0,0,0,.28);border-radius:12px;padding:10px;text-align:center}
+.kutu b{display:block;font-size:20px;color:#ffd54a}
+.kutu span{font-size:11px;color:#bfe6c6}
+.gorev{margin-bottom:12px}
+.gorev .ad{display:flex;justify-content:space-between;font-size:13px}
+#toast{position:fixed;left:50%;top:64px;transform:translateX(-50%);background:rgba(0,0,0,.78);border:2px solid #ffd54a;color:#ffd54a;font-weight:800;font-size:14px;padding:8px 16px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:9;white-space:nowrap}
+#toast.goster{opacity:1}
+#toast.buyuk{font-size:20px;padding:10px 22px}
+@keyframes gl{from{opacity:.3}to{opacity:1}}
+.glow{animation:gl .9s ease-in-out infinite alternate}
+@keyframes zp{from{transform:translateY(0)}to{transform:translateY(-7px)}}
+.zip{animation:zp .7s ease-in-out infinite alternate}
+@keyframes dm{0%{transform:translate(0,0) scale(.6);opacity:.85}100%{transform:translate(9px,-24px) scale(1.4);opacity:0}}
+#duman circle{animation:dm 2.2s linear infinite;transform-box:fill-box;transform-origin:center}
+#duman circle:nth-child(2){animation-delay:.7s}
+#duman circle:nth-child(3){animation-delay:1.4s}
+#duman{opacity:0;transition:opacity .4s}
+#duman.ac{opacity:1}
 </style>
 </head>
 <body>
-<div id="app">
-  <div class="panel">
-    <div class="istat">
-      <div class="stat"><b id="yaprak">0</b><span>🍃 Yaprak</span></div>
-      <div class="stat"><b id="paket">0</b><span>📦 Paket</span></div>
-      <div class="stat"><b id="gunluk">0</b><span>🪙 Bugün satış</span></div>
-    </div>
+<div id="ust">
+  <svg id="sahne" viewBox="0 0 380 130" preserveAspectRatio="xMidYMax slice">
+    <defs>
+      <linearGradient id="gok" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fc6ff"/><stop offset="1" stop-color="#d9f4ff"/></linearGradient>
+      <linearGradient id="deniz" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a9ad8"/><stop offset="1" stop-color="#1e6aa8"/></linearGradient>
+    </defs>
+    <rect width="380" height="130" fill="url(#gok)"/>
+    <circle cx="326" cy="30" r="13" fill="#fff2a8"/>
+    <g fill="#fff" opacity=".92"><ellipse cx="70" cy="30" rx="22" ry="7"/><ellipse cx="90" cy="26" rx="14" ry="6"/><ellipse cx="236" cy="40" rx="20" ry="6"/></g>
+    <rect y="70" width="380" height="60" fill="url(#deniz)"/>
+    <polygon points="0,106 0,62 60,36 120,68 190,30 260,72 320,48 380,74 380,106" fill="#3d8f4a"/>
+    <polygon points="0,106 0,80 50,60 110,84 180,56 250,88 330,66 380,88 380,106" fill="#2f7a3b"/>
+    <g stroke="#1f5a2c" stroke-width="1.2" fill="none" opacity=".55">
+      <path d="M20,86 Q60,70 100,88"/><path d="M130,80 Q180,62 230,84"/><path d="M250,90 Q300,72 350,90"/>
+      <path d="M40,96 Q80,82 120,98"/><path d="M200,94 Q250,80 300,96"/>
+    </g>
+    <rect y="104" width="380" height="26" fill="#2f7a3b"/>
+    <rect y="104" width="380" height="3" fill="#256b2a"/>
+    <g fill="#1d5a28"><polygon points="20,104 30,84 40,104"/><polygon points="40,104 49,88 58,104"/><polygon points="350,104 360,86 370,104"/></g>
+    <!-- fabrika -->
+    <rect x="292" y="76" width="54" height="30" fill="#d3a97c"/>
+    <polygon points="288,76 319,60 350,76" fill="#a64b2a"/>
+    <rect x="328" y="52" width="9" height="26" fill="#8b6a4a"/>
+    <rect x="302" y="88" width="10" height="18" fill="#6b4a2a"/>
+    <rect x="320" y="84" width="12" height="9" fill="#ffe9a8"/>
+    <g id="duman" fill="#e8e8e8"><circle cx="332" cy="50" r="5"/><circle cx="332" cy="50" r="5"/><circle cx="332" cy="50" r="5"/></g>
+    <!-- teleferik -->
+    <line x1="38" y1="50" x2="300" y2="80" stroke="#3a2a1a" stroke-width="1.6"/>
+    <rect x="34" y="48" width="5" height="40" fill="#5a3a1a"/>
+    <g id="kabin" transform="translate(38 50)"><line x1="0" y1="0" x2="0" y2="9" stroke="#3a2a1a" stroke-width="1.4"/><rect x="-8" y="9" width="16" height="11" rx="2" fill="#e84c3d" stroke="#8a1f14"/><rect x="-5" y="11" width="10" height="5" fill="#ffe9a8"/></g>
+  </svg>
+  <div id="hud">
+    <div class="pil"><b id="hy">0</b><span>🍃 Yaprak</span></div>
+    <div class="pil"><b id="hp">0</b><span>📦 Paket</span></div>
+    <div class="pil"><b id="hg">0</b><span>🪙 Bugün satış</span></div>
   </div>
-
-  <div class="panel">
-    <div class="muted" style="font-size:12px;margin-bottom:6px">Fabrika hattı</div>
-    <div class="adim">
-      <span id="asamaYazi" style="font-size:13px">Boşta</span>
-      <div class="bar"><i id="asamaBar" style="width:0%"></i></div>
-      <span id="asamaSure" style="font-size:12px;color:#bfe6c6"></span>
-    </div>
-    <div style="margin-top:8px">
-      <button class="btn" id="btnTel">🚡 Teleferik (10 yaprak)</button>
-      <button class="btn ikincil" id="btnSat">🪙 Kantara sat</button>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="grid" id="tarlalar"></div>
-    <div style="margin-top:8px;text-align:center">
-      <button class="btn ikincil" id="btnYeni">+ Yeni tarla (200 🪙)</button>
-    </div>
-  </div>
-
-  <div class="panel" style="font-size:12px;color:#bfe6c6">
-    Fidan 20 🪙 · Olgunlaşma 10 dk · Hasat 10 yaprak · Teleferik 1 dk · Fabrika 2 dk · 10 yaprak = 1 paket · Paket 40 🪙 · Günlük satış limiti 5.000 🪙
-  </div>
-
-  <div id="bilgi"></div>
-  <div id="hata"></div>
 </div>
+<div id="icerik"></div>
+<div id="hata"></div>
+<div id="nav">
+  <button class="nv on" data-s="tarla"><i>🌱</i>Tarlalar</button>
+  <button class="nv" data-s="nakliye"><i>🚡</i>Nakliye</button>
+  <button class="nv" data-s="fabrika"><i>🏭</i>Fabrika</button>
+  <button class="nv" data-s="koy"><i>🏘️</i>Köy</button>
+  <button class="nv" data-s="gorev"><i>📜</i>Görevler</button>
+</div>
+<div id="toast"></div>
 
 <script>
 const CFG = window.ARI_CIFTLIK || null;
-let d = null, alindi = 0, timer = null, kilit = false;
+const W = 52, H = 30, D = 12, CX = 212, CY = 40, BUY = 600;
+const AD = ['Ev Önü','Dere Kenarı','Kestane Altı','Taşlı Bayır','Sisli Sırt','Güneşli Yamaç','Yeşil Vadi','Kuzey Yamacı','Çınar Bayırı','Eski Değirmen','Deniz Manzara','Zirve Tarla'];
+let d = null, alindi = 0, kilit = false, sekme = 'tarla', imza = '', sonYukle = 0;
 const $ = (id) => document.getElementById(id);
+
 function hata(m) { $('hata').textContent = m || ''; }
-function bilgi(m) { $('bilgi').textContent = m || ''; clearTimeout(bilgi._t); bilgi._t = setTimeout(() => $('bilgi').textContent = '', 2400); }
+function toast(m, buyuk) {
+  const e = $('toast');
+  e.textContent = m;
+  e.className = (buyuk ? 'buyuk ' : '') + 'goster';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { e.className = buyuk ? 'buyuk' : ''; }, 2200);
+}
+function titre() { if (navigator.vibrate) navigator.vibrate(15); }
+function sure(s) { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60), k = s % 60; return m + ':' + (k < 10 ? '0' : '') + k; }
+function kalanSn(v) { return Math.max(0, v - (Date.now() - alindi) / 1000); }
+const buyuyor = (t) => t.durum !== 'bos' && t.durum !== 'hazir';
 
 async function rpc(ad, body) {
   if (!CFG) throw new Error('Oturum yok. Oyunu uygulamadan aç.');
@@ -91,9 +143,8 @@ async function rpc(ad, body) {
   return j;
 }
 
-function sure(s) { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60), k = s % 60; return m + ':' + (k < 10 ? '0' : '') + k; }
-
 async function yukle() {
+  sonYukle = Date.now();
   try {
     d = await rpc('cay_durum');
     alindi = Date.now();
@@ -102,83 +153,216 @@ async function yukle() {
   } catch (e) { hata(e.message); }
 }
 
-function kalanSn(v) { return Math.max(0, v - (Date.now() - alindi) / 1000); }
-
-function ciz() {
-  if (!d) return;
-  $('yaprak').textContent = d.yaprak;
-  $('paket').textContent = d.paket;
-  $('gunluk').textContent = d.gunluk_coin + '/' + d.gunluk_limit;
-
-  const tl = $('tarlalar');
-  tl.innerHTML = d.tarlalar.map((t) => {
-    if (t.durum === 'bos') return '<div class="tarla bos" data-i="' + t.i + '"><div class="ikon">🌱</div><div class="yazi">Fidan ek (20 🪙)</div></div>';
-    if (t.durum === 'hazir') return '<div class="tarla hazir" data-i="' + t.i + '"><div class="ikon">🍃</div><div class="yazi">Hasat et</div></div>';
-    return '<div class="tarla buyuyor" data-i="' + t.i + '" data-kalan="' + t.kalan + '"><div class="ikon">🌿</div><div class="yazi">Büyüyor <span class="sn"></span></div><div class="cubuk"><i style="width:0%"></i></div></div>';
-  }).join('');
-  tl.querySelectorAll('.tarla').forEach((el) => {
-    el.onclick = () => {
-      const i = Number(el.dataset.i);
-      const t = d.tarlalar[i];
-      if (t.durum === 'bos') ek(i);
-      else if (t.durum === 'hazir') hasat(i);
-      else bilgi('Henüz olgunlaşmadı');
-    };
-  });
-
-  const asama = d.asama;
-  if (!asama) { $('asamaYazi').textContent = 'Boşta'; $('asamaBar').style.width = '0%'; $('asamaSure').textContent = ''; }
-  else {
-    $('asamaYazi').textContent = asama === 'tel' ? '🚡 Teleferik yolda' : '🏭 Fabrikada işleniyor';
-    $('asamaBar').dataset.toplam = asama === 'tel' ? 60 : 120;
-  }
-  $('btnTel').disabled = !!asama || d.yaprak < 10;
-  $('btnSat').disabled = d.paket <= 0;
-  $('btnYeni').disabled = d.tarla_sayisi >= 12;
-  $('btnYeni').textContent = d.tarla_sayisi >= 12 ? 'Tarla limiti doldu' : '+ Yeni tarla (200 🪙)';
-}
-
-// Sayaçları saniyede bir güncelle
-setInterval(() => {
-  if (!d) return;
-  document.querySelectorAll('.tarla.buyuyor').forEach((el) => {
-    const i = Number(el.dataset.i);
-    const kalan = kalanSn(d.tarlalar[i].kalan);
-    el.querySelector('.sn').textContent = sure(kalan);
-    el.querySelector('.cubuk i').style.width = Math.min(100, (1 - kalan / 600) * 100) + '%';
-  });
-  if (d.asama) {
-    const toplam = d.asama === 'tel' ? 60 : 120;
-    const kalan = kalanSn(d.asama_kalan);
-    $('asamaSure').textContent = sure(kalan);
-    $('asamaBar').style.width = Math.min(100, (1 - kalan / toplam) * 100) + '%';
-  }
-}, 1000);
-
 async function eylem(ad, body, mesaj) {
   if (kilit) return;
   kilit = true;
-  try { await rpc(ad, body); if (mesaj) bilgi(mesaj); }
+  try { await rpc(ad, body); titre(); if (mesaj) toast(mesaj); }
   catch (e) { hata(e.message); }
   kilit = false;
   await yukle();
 }
 
-const ek = (i) => eylem('cay_ek', { p_i: i }, 'Fidan ekildi');
-const hasat = (i) => eylem('cay_hasat', { p_i: i }, '+10 yaprak');
-$('btnTel').onclick = () => eylem('cay_teleferik', {}, 'Teleferik yola çıktı');
-$('btnSat').onclick = async () => {
-  if (kilit) return;
+async function toplu(ad, filtre, mesaj) {
+  if (kilit || !d) return;
   kilit = true;
-  try { const s = await rpc('cay_sat'); bilgi('+' + s.kazanc + ' 🪙 kazandın'); }
-  catch (e) { hata(e.message); }
+  let n = 0;
+  try {
+    for (const t of d.tarlalar.filter(filtre)) { await rpc(ad, { p_i: t.i }); n++; }
+  } catch (e) { hata(e.message); }
   kilit = false;
   await yukle();
-};
-$('btnYeni').onclick = () => eylem('cay_yeni_tarla', {}, 'Yeni tarla açıldı');
+  if (n) { titre(); toast(mesaj(n)); }
+}
+
+/* ---------- Tarla çizimi ---------- */
+function yuz(x, y, top, l, r) {
+  return '<polygon points="' + x + ',' + (y - H) + ' ' + (x + W) + ',' + y + ' ' + x + ',' + (y + H) + ' ' + (x - W) + ',' + y + '" fill="' + top + '"/>' +
+    '<polygon points="' + (x - W) + ',' + y + ' ' + x + ',' + (y + H) + ' ' + x + ',' + (y + H + D) + ' ' + (x - W) + ',' + (y + D) + '" fill="' + l + '"/>' +
+    '<polygon points="' + (x + W) + ',' + y + ' ' + x + ',' + (y + H) + ' ' + x + ',' + (y + H + D) + ' ' + (x + W) + ',' + (y + D) + '" fill="' + r + '"/>';
+}
+function cizgi(x, y) {
+  let s = '';
+  [0.25, 0.5, 0.75].forEach((t) => {
+    s += '<line x1="' + (x - t * W) + '" y1="' + (y - H + t * H) + '" x2="' + (x + W - t * W) + '" y2="' + (y + t * H) + '" stroke="#000" stroke-opacity=".22" stroke-width="1.5"/>';
+  });
+  return s;
+}
+function calilar(i, x, y, koyu, acik, s, hazir) {
+  let o = '';
+  [0.25, 0.5, 0.75].forEach((t) => {
+    [0.2, 0.5, 0.8].forEach((u) => {
+      const bx = (x - t * W + u * W).toFixed(1), by = (y - H + t * H + u * H - 2).toFixed(1);
+      o += '<g class="bu' + i + '" data-bx="' + bx + '" data-by="' + by + '" transform="translate(' + bx + ' ' + by + ') scale(' + s + ')">' +
+        '<ellipse rx="10" ry="7" fill="' + koyu + '"/><ellipse cx="-2" cy="-3" rx="7" ry="4" fill="' + acik + '"/>' +
+        (hazir ? '<circle cx="-4" cy="-6" r="1.8" fill="#eaff9a"/><circle cx="3" cy="-5" r="1.8" fill="#eaff9a"/>' : '') + '</g>';
+    });
+  });
+  return o;
+}
+function pil(x, y, w, txt, renk, id) {
+  return '<rect x="' + (x - w / 2) + '" y="' + (y - 8) + '" width="' + w + '" height="15" rx="7.5" fill="#000" fill-opacity=".55"/>' +
+    '<text ' + (id ? 'id="' + id + '" ' : '') + 'x="' + x + '" y="' + (y + 3) + '" text-anchor="middle" font-size="10" font-weight="700" fill="' + renk + '">' + txt + '</text>';
+}
+function karo(i) {
+  const r = Math.floor(i / 3), c = i % 3, x = CX + (c - r) * W, y = CY + (c + r) * H;
+  const t = d.tarlalar[i];
+  if (!t) {
+    const sonraki = i === d.tarla_sayisi;
+    const ic = sonraki
+      ? '<text x="' + x + '" y="' + (y + 2) + '" text-anchor="middle" font-size="22" fill="#fff">＋</text>' + pil(x, y + 15, 50, '200 🪙', '#ffd54a')
+      : '<text x="' + x + '" y="' + (y + 6) + '" text-anchor="middle" font-size="16" opacity=".7">🔒</text>';
+    return '<g data-i="' + i + '" data-k="' + (sonraki ? 'yeni' : 'kilit') + '">' +
+      yuz(x, y, sonraki ? '#6f8f5a' : '#3b5a44', '#2a4030', '#32503a') + ic + '</g>';
+  }
+  if (t.durum === 'bos') {
+    return '<g data-i="' + i + '" data-k="ek">' + yuz(x, y, '#8a6238', '#4d301a', '#5f3d20') + cizgi(x, y) +
+      '<text x="' + x + '" y="' + (y - 2) + '" text-anchor="middle" font-size="20">🌱</text>' + pil(x, y + 14, 44, '20 🪙', '#ffd54a') + '</g>';
+  }
+  if (t.durum === 'hazir') {
+    return '<g data-i="' + i + '" data-k="hasat">' + yuz(x, y, '#58b043', '#2f7a2a', '#3a8f31') + cizgi(x, y) +
+      calilar(i, x, y, '#2f8a2f', '#7be05a', 1, true) +
+      '<polygon class="glow" points="' + x + ',' + (y - H) + ' ' + (x + W) + ',' + y + ' ' + x + ',' + (y + H) + ' ' + (x - W) + ',' + y + '" fill="none" stroke="#ffe066" stroke-width="3"/>' +
+      '<g class="zip"><text x="' + x + '" y="' + (y - 8) + '" text-anchor="middle" font-size="22">🍃</text></g>' +
+      pil(x, y + 15, 46, 'Hasat', '#ffe066') + '</g>';
+  }
+  let p = 1 - kalanSn(t.kalan) / BUY;
+  p = Math.max(0, Math.min(1, p));
+  const s = (0.35 + 0.65 * p).toFixed(2);
+  return '<g data-i="' + i + '" data-k="bekle">' + yuz(x, y, '#3f8a3a', '#2a5a22', '#337028') + cizgi(x, y) +
+    calilar(i, x, y, '#256b2a', '#4aa23a', s, false) +
+    pil(x, y + 13, 44, sure(kalanSn(t.kalan)), '#fff', 'sn' + i) +
+    '<rect x="' + (x - 20) + '" y="' + (y + 19) + '" width="40" height="4" rx="2" fill="#000" fill-opacity=".5"/>' +
+    '<rect id="pb' + i + '" x="' + (x - 20) + '" y="' + (y + 19) + '" width="' + (40 * p).toFixed(1) + '" height="4" rx="2" fill="#ffe066"/></g>';
+}
+function tahta() {
+  const sira = [];
+  for (let i = 0; i < 12; i++) sira.push(i);
+  sira.sort((a, b) => (Math.floor(a / 3) + a % 3) - (Math.floor(b / 3) + b % 3) || a - b);
+  return sira.map(karo).join('');
+}
+
+/* ---------- Sekmeler ---------- */
+function panel() {
+  const ic = $('icerik');
+  const as = d.asama, tel = as === 'tel', fab = !!as && !tel;
+  const kalanLimit = Math.max(0, d.gunluk_limit - d.gunluk_coin);
+  if (sekme === 'tarla') {
+    ic.innerHTML = '<div class="kart" style="padding:6px"><svg id="tahta" viewBox="0 0 380 250" style="width:100%;display:block">' + tahta() + '</svg></div>' +
+      '<div class="sira"><button class="btn" id="bHasat">🍃 Tümünü hasat et</button><button class="btn ikincil" id="bEk">🌱 Tümüne fidan ek</button></div>' +
+      '<div class="not">Fidan 20 🪙 · Olgunlaşma 10 dk · Hasat 10 yaprak · Yeni tarla 200 🪙</div>';
+    $('tahta').addEventListener('click', (e) => {
+      const g = e.target.closest('[data-i]');
+      if (!g) return;
+      const i = +g.dataset.i, k = g.dataset.k;
+      if (k === 'ek') eylem('cay_ek', { p_i: i }, 'Fidan ekildi 🌱');
+      else if (k === 'hasat') eylem('cay_hasat', { p_i: i }, '+10 yaprak 🍃');
+      else if (k === 'yeni') eylem('cay_yeni_tarla', {}, 'Yeni tarla açıldı 🎉');
+      else if (k === 'bekle') toast('Çaylar henüz olgunlaşmadı');
+      else toast('Önce sıradaki tarlayı aç');
+    });
+    $('bHasat').onclick = () => toplu('cay_hasat', (t) => t.durum === 'hazir', (n) => '+' + (n * 10) + ' yaprak 🍃');
+    $('bEk').onclick = () => toplu('cay_ek', (t) => t.durum === 'bos', (n) => n + ' fidan ekildi 🌱');
+  } else if (sekme === 'nakliye') {
+    ic.innerHTML = '<div class="kart"><div class="bas">🚡 Teleferik</div>' +
+      '<p class="alt">Topladığın yaprakları dağdan fabrikaya indirir. 10 yaprak gönderirsin, yaklaşık 1 dakika sürer. Kabini yukarıdaki sahnede yolda görebilirsin.</p>' +
+      '<div class="say"><b>' + d.yaprak + '</b> 🍃 yaprak depoda</div>' +
+      (tel ? '<div class="durum">Teleferik yolda · <b id="snT"></b></div><div class="bar"><i id="pbT"></i></div>'
+        : fab ? '<div class="durum">Fabrika çalışıyor, bitince tekrar gönderebilirsin.</div>' : '') +
+      '<button class="btn" id="bTel"' + ((as || d.yaprak < 10) ? ' disabled' : '') + '>🚡 Teleferiği çalıştır (10 yaprak)</button>' +
+      (d.yaprak < 10 && !as ? '<div class="not">En az 10 yaprak gerekiyor, tarlalardan hasat et.</div>' : '') + '</div>';
+    $('bTel').onclick = () => eylem('cay_teleferik', {}, 'Teleferik yola çıktı 🚡');
+  } else if (sekme === 'fabrika') {
+    ic.innerHTML = '<div class="kart"><div class="bas">🏭 Fabrika</div>' +
+      '<p class="alt">Gelen yapraklar işlenir: 10 yaprak = 1 paket. Fabrika hattı yaklaşık 2 dakika sürer. Paketler kantarda 40 🪙 eder.</p>' +
+      (fab ? '<div class="durum">Fabrikada işleniyor · <b id="snF"></b></div><div class="bar"><i id="pbF"></i></div>'
+        : tel ? '<div class="durum">Yapraklar teleferikle yolda…</div>' : '<div class="durum">Hat boşta.</div>') +
+      '<div class="say"><b>' + d.paket + '</b> 📦 paket hazır</div>' +
+      '<button class="btn" id="bSat"' + (d.paket <= 0 ? ' disabled' : '') + '>🪙 Kantara sat (paket × 40 🪙)</button></div>' +
+      '<div class="kart"><div class="bas" style="font-size:14px">Günlük satış limiti</div>' +
+      '<div class="bar alt2"><i style="width:' + Math.min(100, d.gunluk_coin / d.gunluk_limit * 100) + '%"></i></div>' +
+      '<div class="not" style="margin:0">' + d.gunluk_coin + ' / ' + d.gunluk_limit + ' 🪙 · kalan ' + kalanLimit + ' 🪙</div></div>';
+    $('bSat').onclick = async () => {
+      if (kilit) return;
+      kilit = true;
+      try { const s = await rpc('cay_sat'); titre(); toast('+' + s.kazanc + ' 🪙', true); }
+      catch (e) { hata(e.message); }
+      kilit = false;
+      await yukle();
+    };
+  } else if (sekme === 'koy') {
+    let liste = '';
+    for (let i = 0; i < 12; i++) {
+      const t = d.tarlalar[i];
+      const rz = !t ? '<span class="rozet k">Kilitli</span>' : t.durum === 'hazir' ? '<span class="rozet h">Hasada hazır</span>' : t.durum === 'bos' ? '<span class="rozet">Boş</span>' : '<span class="rozet b">Büyüyor</span>';
+      liste += '<div class="satir"><span>' + (t ? '🌿' : '🔒') + ' ' + AD[i] + '</span>' + rz + '</div>';
+    }
+    ic.innerHTML = '<div class="kart"><div class="bas">🏘️ Köyüm</div><div class="izgara">' +
+      '<div class="kutu"><b>' + d.tarla_sayisi + '/12</b><span>Tarla</span></div>' +
+      '<div class="kutu"><b>' + d.paket + '</b><span>Paket</span></div>' +
+      '<div class="kutu"><b>' + d.yaprak + '</b><span>Yaprak</span></div>' +
+      '<div class="kutu"><b>' + d.gunluk_coin + '</b><span>Bugün satış 🪙</span></div></div></div>' +
+      '<div class="kart"><div class="bas" style="font-size:14px">Tarlalarım</div>' + liste + '</div>';
+  } else {
+    const G = [
+      ['4 tarlaya ulaş', d.tarla_sayisi, 4], ['8 tarlaya ulaş', d.tarla_sayisi, 8], ['12 tarlaya ulaş', d.tarla_sayisi, 12],
+      ['Bugün 1.000 🪙 sat', d.gunluk_coin, 1000], ['Bugün 3.000 🪙 sat', d.gunluk_coin, 3000], ['Bugün 5.000 🪙 sat', d.gunluk_coin, 5000]
+    ];
+    ic.innerHTML = '<div class="kart"><div class="bas">📜 Görevler</div>' + G.map((g) => {
+      const tam = g[1] >= g[2];
+      return '<div class="gorev"><div class="ad"><span>' + (tam ? '✅ ' : '') + g[0] + '</span><span>' + Math.min(g[1], g[2]) + '/' + g[2] + '</span></div>' +
+        '<div class="bar alt2" style="margin-bottom:0"><i style="width:' + Math.min(100, g[1] / g[2] * 100) + '%"></i></div></div>';
+    }).join('') + '</div>';
+  }
+}
+
+function ciz() {
+  if (!d) return;
+  $('hy').textContent = d.yaprak;
+  $('hp').textContent = d.paket;
+  $('hg').textContent = d.gunluk_coin + '/' + d.gunluk_limit;
+  document.querySelectorAll('.nv').forEach((b) => b.classList.toggle('on', b.dataset.s === sekme));
+  $('duman').classList.toggle('ac', !!d.asama && d.asama !== 'tel');
+  const im = sekme + '|' + JSON.stringify([d.yaprak, d.paket, d.gunluk_coin, d.gunluk_limit, d.asama, d.tarla_sayisi, d.tarlalar.map((t) => t.durum)]);
+  if (im !== imza) { imza = im; panel(); }
+  tick();
+}
+
+function tick() {
+  if (!d) return;
+  let yenile = false;
+  d.tarlalar.forEach((t, i) => {
+    if (!buyuyor(t)) return;
+    const kal = kalanSn(t.kalan);
+    const p = Math.max(0, Math.min(1, 1 - kal / BUY));
+    const sn = $('sn' + i); if (sn) sn.textContent = sure(kal);
+    const pb = $('pb' + i); if (pb) pb.setAttribute('width', (40 * p).toFixed(1));
+    const s = (0.35 + 0.65 * p).toFixed(2);
+    document.querySelectorAll('.bu' + i).forEach((e) => e.setAttribute('transform', 'translate(' + e.dataset.bx + ' ' + e.dataset.by + ') scale(' + s + ')'));
+    if (kal <= 0) yenile = true;
+  });
+  const as = d.asama;
+  let pa = 0;
+  if (as) {
+    const top = as === 'tel' ? 60 : 120;
+    const kal = kalanSn(d.asama_kalan);
+    pa = Math.max(0, Math.min(1, 1 - kal / top));
+    const k = as === 'tel' ? 'T' : 'F';
+    const sn = $('sn' + k); if (sn) sn.textContent = sure(kal);
+    const pb = $('pb' + k); if (pb) pb.style.width = (pa * 100).toFixed(1) + '%';
+    if (kal <= 0) yenile = true;
+  }
+  const p = as === 'tel' ? pa : 0;
+  $('kabin').setAttribute('transform', 'translate(' + (38 + 262 * p).toFixed(1) + ' ' + (50 + 30 * p).toFixed(1) + ')');
+  if (yenile && Date.now() - sonYukle > 1500) yukle();
+}
+
+document.querySelectorAll('.nv').forEach((b) => {
+  b.onclick = () => { sekme = b.dataset.s; imza = ''; if (d) ciz(); };
+});
 
 yukle();
-timer = setInterval(yukle, 4000);
+setInterval(tick, 1000);
+setInterval(yukle, 4000);
 </script>
 </body>
 </html>
