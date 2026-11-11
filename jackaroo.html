@@ -6,70 +6,63 @@
 <title>Jackaroo</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;background:#0d2a1f;color:#fff6dc;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden}
-body{background:radial-gradient(circle at 50% 30%,#1f5a40 0%,#0d2a1f 70%) fixed}
-#app{padding:10px 10px 24px;max-width:520px;margin:0 auto}
-.panel{background:rgba(12,40,30,.82);border:1px solid #2f6b50;border-radius:16px;padding:10px;margin-bottom:10px}
-.btn{background:linear-gradient(#ffd85a,#f2a81b);color:#2a1a02;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;cursor:pointer;box-shadow:0 2px 0 #b57a10}
-.btn.ikincil{background:transparent;color:#fff6dc;border:1px solid #5c8f74;box-shadow:none}
-.btn.tehlike{background:transparent;color:#ff8a5c;border:1px solid #ff8a5c;box-shadow:none}
-.muted{color:#a9cdb9;font-size:12px}
-.satir{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #2f6b50}
-.satir:last-child{border-bottom:0}
-.grow{flex:1}
+html,body{margin:0;color:#fff6dc;font-family:-apple-system,Roboto,Arial,sans-serif;overflow-x:hidden;background:#2b0f4a}
+body{background:radial-gradient(circle at 50% 0,#6a2aa8 0,#3a1366 45%,#1d0838 100%) fixed}
+#app{padding:10px 10px 24px;max-width:480px;margin:0 auto}
+h2{margin:4px 0 10px;text-align:center;font-size:24px;font-weight:900;color:#ffd54a;text-shadow:0 2px 0 #8a5a00,0 0 14px rgba(255,200,60,.5)}
+.panel{background:rgba(20,6,40,.6);border:1.5px solid #c9964a;border-radius:16px;padding:10px;margin-bottom:10px}
+.btn{background:linear-gradient(#ffe27a,#f0a81c);color:#3b2406;border:0;border-radius:12px;padding:10px 14px;font-weight:800;font-size:14px;margin:4px 4px 4px 0;box-shadow:0 3px 0 #9a6410}
+.btn:active{transform:translateY(2px);box-shadow:0 1px 0 #9a6410}
+.btn.ikincil{background:transparent;color:#fff6dc;border:1px solid #c9964a;box-shadow:none}
+.btn.tehlike{background:transparent;color:#ff8a65;border:1px solid #ff8a65;box-shadow:none}
+.muted{color:#cdb9e8;font-size:12px}
+.satir{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+.satir:last-child{border-bottom:0}.grow{flex:1}
+.gizle{display:none}
+.bant{padding:9px 12px;border-radius:12px;background:rgba(0,0,0,.35);font-size:13px;text-align:center;margin-bottom:6px}
+.bant.sira{background:rgba(255,213,74,.2);color:#ffd54a;font-weight:800}
 
-/* Koltuklar */
-.koltuklar{display:flex;justify-content:space-around;gap:6px;margin:6px 0 10px}
-.koltuk{width:72px;text-align:center}
-.avatar{width:54px;height:54px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;color:#1b1204;border:3px solid;box-shadow:0 3px 8px rgba(0,0,0,.5)}
-.koltuk .ad{font-size:11px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.koltuk .say{font-size:10px;color:#a9cdb9}
-.koltuk.sira .avatar{box-shadow:0 0 0 3px #ffd85a,0 0 14px #ffd85a}
-.koltuk.bos .avatar{opacity:.35}
+.tahta-kap{position:relative;width:100%;max-width:440px;margin:4px auto;aspect-ratio:1/1}
+#tahta{position:absolute;inset:0}
+#tahta svg{width:100%;height:100%;display:block;filter:drop-shadow(0 8px 14px rgba(0,0,0,.55))}
+.bilye{transition:transform .45s cubic-bezier(.3,.8,.3,1)}
+.bilye.sec{cursor:pointer}
+.bilye.sec .g{animation:pls .7s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+@keyframes pls{from{stroke:#fff;transform:scale(1)}to{stroke:#ffe066;transform:scale(1.25)}}
+#avlar{position:absolute;inset:0;pointer-events:none}
+.av{position:absolute;width:15%;transform:translate(-50%,-50%);text-align:center}
+.av .yz{width:100%;aspect-ratio:1/1;border-radius:50%;background:var(--r);border:3px solid #ffd54a;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;color:#fff;text-shadow:0 1px 2px #000;box-shadow:0 0 0 2px #7a4a00,0 4px 8px rgba(0,0,0,.5)}
+.av.sira .yz{animation:parla .8s ease-in-out infinite alternate}
+@keyframes parla{from{box-shadow:0 0 0 2px #7a4a00,0 0 4px #ffd54a}to{box-shadow:0 0 0 2px #7a4a00,0 0 18px 4px #ffd54a}}
+.av b{display:block;font-size:10px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+.av span{font-size:10px;color:#ffe9a8;text-shadow:0 1px 2px #000}
 
-/* Tahta */
-.tahta-kap{background:linear-gradient(#8a5a2b,#5b3a1a);border-radius:50%;padding:10px;box-shadow:inset 0 0 24px rgba(0,0,0,.45),0 8px 20px rgba(0,0,0,.4)}
-#tahta{position:relative;width:100%;aspect-ratio:1/1;border-radius:50%;background:radial-gradient(circle,#f4e2b8 0%,#e6c995 75%);border:3px solid #6b4520}
-.nokta{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#b8935a;border:1px solid #8a6a3a}
-.nokta.bas{width:20px;height:20px;margin:-10px 0 0 -10px;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.5)}
-.nokta.guvenli::after{content:'★';position:absolute;left:0;right:0;top:-6px;font-size:9px;color:#fff;text-align:center;text-shadow:0 0 2px #000}
-.bilye{position:absolute;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;box-shadow:0 3px 6px rgba(0,0,0,.6);transition:left .35s,top .35s}
-.bilye.sec{box-shadow:0 0 0 3px #ffd85a,0 0 14px #ffd85a;cursor:pointer;animation:nabiz 1s ease-in-out infinite}
-@keyframes nabiz{50%{transform:scale(1.15)}}
-.r0{background:#d7332b}.r1{background:#2e9e4a}.r2{background:#f2c81e;color:#2a1a02}.r3{background:#1f78d1}
-
-/* Kartlar */
-.ust{display:flex;gap:14px;justify-content:center;align-items:center;margin:10px 0 4px}
-.yigin{width:62px;height:88px;border-radius:9px;background:repeating-linear-gradient(45deg,#8e1d1d,#8e1d1d 6px,#6a1313 6px,#6a1313 12px);border:2px solid #ffd85a;display:flex;align-items:center;justify-content:center;color:#ffd85a;font-weight:800;font-size:14px;box-shadow:0 4px 10px rgba(0,0,0,.45)}
-.kart{position:relative;flex:0 0 auto;width:62px;height:88px;background:#fffdf6;border-radius:9px;box-shadow:0 4px 10px rgba(0,0,0,.5);border:2px solid #d9cba6;cursor:pointer;transition:transform .18s}
-.kart.ozel{background:linear-gradient(#e6e3dc,#c9c4b8)}
-.kart.sec{transform:translateY(-14px);border-color:#ffd85a;box-shadow:0 0 0 2px #ffd85a,0 8px 16px rgba(0,0,0,.5)}
+.ust{display:flex;gap:16px;justify-content:center;align-items:center;margin:8px 0 2px}
+.yigin{width:62px;height:88px;border-radius:9px;background:repeating-linear-gradient(45deg,#7a1d9c,#7a1d9c 6px,#5a1278 6px,#5a1278 12px);border:2px solid #ffd54a;display:flex;align-items:center;justify-content:center;color:#ffd54a;font-weight:900;font-size:18px;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+.kart{position:relative;flex:0 0 auto;width:64px;height:92px;background:#fffdf6;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,.55);border:2px solid #d9cba6;cursor:pointer;transition:transform .18s}
+.kart.ozel{background:linear-gradient(#f4f0e6,#d9d3c4)}
+.kart.sec{transform:translateY(-18px);border-color:#ffd54a;box-shadow:0 0 0 2px #ffd54a,0 10px 18px rgba(0,0,0,.55);z-index:5}
 .kart .no{position:absolute;top:3px;left:5px;font-weight:800;font-size:13px;line-height:1;color:#1b1b1b}
-.kart .no.kirmizi{color:#c62828}
+.kart .no.kirmizi,.kart .alt.kirmizi{color:#c62828}
 .kart .su{position:absolute;top:18px;left:5px;font-size:12px;line-height:1}
 .kart .etki{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;color:#1b1b1b;text-align:center;line-height:1}
 .kart .etki.eksi{color:#c62828}
-.kart .etki.arti{color:#1b1b1b}
-.kart .etki small{font-size:9px;display:block;font-weight:700;color:#555}
 .kart .alt{position:absolute;bottom:3px;right:5px;font-weight:800;font-size:13px;line-height:1;transform:rotate(180deg);color:#1b1b1b}
-.kart .alt.kirmizi{color:#c62828}
-.el{display:flex;gap:6px;overflow-x:auto;padding:18px 6px 14px;-webkit-overflow-scrolling:touch;justify-content:flex-start}
-
-/* Seçim */
-.sec-baslik{font-weight:800;margin-bottom:8px;text-align:center;color:#ffd85a}
-.gizle{display:none}
-#hata{color:#ff8a5c;font-size:13px;min-height:18px;text-align:center}
-#bilgi{color:#9fe8b4;font-size:13px;min-height:18px;text-align:center;font-weight:700}
-.bant{padding:8px 12px;border-radius:12px;background:rgba(0,0,0,.35);font-size:13px;text-align:center;margin-bottom:8px}
-.bant.sira{background:rgba(255,216,90,.18);color:#ffd85a;font-weight:800}
+.el{display:flex;overflow-x:auto;padding:22px 8px 12px;-webkit-overflow-scrolling:touch}
+.el .kart+.kart{margin-left:-14px}
+.sec-baslik{font-weight:800;margin-bottom:8px;text-align:center;color:#ffd54a}
+#hata{color:#ff9b7a;font-size:13px;min-height:18px;text-align:center}
+#bilgi{color:#9be36b;font-size:13px;min-height:18px;text-align:center;font-weight:700}
 </style>
 </head>
 <body>
 <div id="app">
+  <h2>🃏 Jackaroo</h2>
   <div id="lobi">
     <div class="panel">
       <div class="muted">Bu odadaki masalar</div>
       <div id="masalar"></div>
+      <button class="btn ikincil" onclick="lobiYukle()">↻ Yenile</button>
       <div style="margin-top:8px">
         <button class="btn" onclick="masaAc(2)">2 kişilik aç</button>
         <button class="btn" onclick="masaAc(3)">3 kişilik aç</button>
@@ -80,14 +73,11 @@ body{background:radial-gradient(circle at 50% 30%,#1f5a40 0%,#0d2a1f 70%) fixed}
 
   <div id="masa" class="gizle">
     <div class="panel">
-      <div id="baslik" style="text-align:center;font-weight:800"></div>
-      <div class="koltuklar" id="koltuklar"></div>
+      <div id="baslik" style="text-align:center;font-weight:800;margin-bottom:6px"></div>
       <div id="bant" class="bant"></div>
     </div>
 
-    <div class="tahta-kap">
-      <div id="tahta"></div>
-    </div>
+    <div class="tahta-kap"><div id="tahta"></div><div id="avlar"></div></div>
 
     <div class="ust">
       <div class="yigin" id="yigin"></div>
@@ -123,12 +113,10 @@ const ODA = window.ARI_ODA || null;
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
 const SUITS = ['♠','♥','♦','♣'];
 const RENK = ['#d7332b', '#2e9e4a', '#f2c81e', '#1f78d1'];
-const RENK_AD = ['Kırmızı', 'Yeşil', 'Sarı', 'Mavi'];
-// Kart etkileri (referans oyundaki gibi)
 const ETKI = ['+1/+11', '+2', '+3', '−4', '+5', '+6', 'X+Y=7', '+8', '+9', '+10', '⇄', '+12', '+•'];
 const OZEL = [false, false, false, true, true, false, true, false, false, true, true, false, true];
 
-let masaId = null, masa = null, timer = null, kilit = false, secim = null;
+let masaId = null, masa = null, timer = null, kilit = false, secim = null, tahtaN = 0;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -147,18 +135,13 @@ async function rpc(ad, body) {
   return j;
 }
 async function tablo(yol) {
-  const r = await fetch(CFG.url + '/rest/v1/' + yol, {
-    headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token }
-  });
+  const r = await fetch(CFG.url + '/rest/v1/' + yol, { headers: { apikey: CFG.anon, Authorization: 'Bearer ' + CFG.token } });
   return r.json();
 }
 
-// ---------- Tahta geometrisi ----------
-// 40 kare halka. Her rengin başlangıcı c*10. Renk şeridi 40-43, bitiş 44 (merkez).
-const C = 50;     // yüzde merkez
-const R = 40;     // halka yarıçapı (%)
+// ---------- Tahta geometrisi (sunucuyla aynı) ----------
+const C = 50, R = 40;
 const aci = (abs) => (abs / 40) * 2 * Math.PI - Math.PI / 2;
-const yuz = (v) => v + '%';
 function halka(abs) { const a = aci(abs); return [C + R * Math.cos(a), C + R * Math.sin(a)]; }
 function serit(c, p) { const a = aci(c * 10); const r = R - (p - 39) * 6.2; return [C + r * Math.cos(a), C + r * Math.sin(a)]; }
 function ussu(c, q) { const a = aci(c * 10) + (q - 1.5) * 0.2; const r = 58; return [C + r * Math.cos(a), C + r * Math.sin(a)]; }
@@ -180,7 +163,7 @@ async function lobiYukle() {
   if (!ODA) { $('masalar').innerHTML = '<div class="muted">Oda bilgisi alınamadı. Oyunu odadan aç.</div>'; return; }
   const liste = await tablo('oyun_masalari?oda_id=eq.' + ODA + '&oyun=eq.jackaroo&durum=neq.bitti&select=id,durum,max_oyuncu,sahip_id&order=olusturma.desc');
   if (!Array.isArray(liste) || liste.length === 0) {
-    $('masalar').innerHTML = '<div class="muted">Açık masa yok. Aşağıdan bir masa aç.</div>';
+    $('masalar').innerHTML = '<div class="muted" style="padding:8px 0">Açık masa yok. Aşağıdan bir masa aç.</div>';
     return;
   }
   const oyuncular = await Promise.all(liste.map((m) => tablo('oyun_masa_oyuncular?masa_id=eq.' + m.id + '&select=kullanici_id')));
@@ -190,18 +173,14 @@ async function lobiYukle() {
     const etiket = m.durum === 'bekliyor' ? (n + '/' + m.max_oyuncu + ' kişi bekliyor') : 'Oynanıyor';
     const bosYok = !icinde && (m.durum === 'oynaniyor' || n >= m.max_oyuncu);
     const buton = bosYok ? '' : '<button class="btn" onclick="girMasa(' + m.id + ')">' + (icinde ? 'Aç' : 'Katıl') + '</button>';
-    return '<div class="satir"><div class="grow">Masa #' + m.id + '<div class="muted">' + etiket + '</div></div>' + buton + '</div>';
+    return '<div class="satir"><div class="grow">🃏 Masa #' + m.id + '<div class="muted">' + etiket + '</div></div>' + buton + '</div>';
   }).join('');
 }
-
 async function masaAc(n) {
   hata('');
-  try {
-    const id = await rpc('masa_ac', { p_oda: ODA, p_oyun: 'jackaroo', p_max: n, p_mod: 'klasik' });
-    await girMasa(id);
-  } catch (e) { hata(e.message); }
+  try { const id = await rpc('masa_ac', { p_oda: ODA, p_oyun: 'jackaroo', p_max: n, p_mod: 'klasik' }); await girMasa(id); }
+  catch (e) { hata(e.message); }
 }
-
 async function girMasa(id) {
   hata('');
   try {
@@ -211,7 +190,7 @@ async function girMasa(id) {
       if (d.durum !== 'bekliyor') throw new Error('Bu masa oynanıyor');
       await rpc('masa_katil', { p_masa: id });
     }
-    masaId = id;
+    masaId = id; tahtaN = 0;
     $('lobi').classList.add('gizle');
     $('masa').classList.remove('gizle');
     await yenile();
@@ -219,24 +198,17 @@ async function girMasa(id) {
     timer = setInterval(yenile, 1500);
   } catch (e) { hata(e.message); }
 }
-
 function lobiyeDon() {
-  clearInterval(timer);
-  timer = null;
-  masaId = null; masa = null; secim = null;
+  clearInterval(timer); timer = null;
+  masaId = null; masa = null; secim = null; tahtaN = 0;
   $('masa').classList.add('gizle');
   $('lobi').classList.remove('gizle');
   lobiYukle();
 }
-
 async function ayrilOyun() {
   if (!masaId) return;
   const simdi = Date.now();
-  if (!ayrilOyun._t || simdi - ayrilOyun._t > 4000) {
-    ayrilOyun._t = simdi;
-    bilgi('Ayrılmak için bir kez daha dokun');
-    return;
-  }
+  if (!ayrilOyun._t || simdi - ayrilOyun._t > 4000) { ayrilOyun._t = simdi; bilgi('Ayrılmak için bir kez daha dokun'); return; }
   ayrilOyun._t = 0;
   try {
     const s = await rpc('masa_oyun_ortasi_ayril', { p_masa: masaId });
@@ -244,13 +216,10 @@ async function ayrilOyun() {
     lobiyeDon();
   } catch (e) { hata(e.message); }
 }
-
 async function yenile() {
   if (!masaId) return;
-  try {
-    masa = await rpc('masa_durumu', { p_masa: masaId });
-    render();
-  } catch (e) { hata(e.message); }
+  try { masa = await rpc('masa_durumu', { p_masa: masaId }); render(); }
+  catch (e) { hata(e.message); }
 }
 
 // ---------- Çizim ----------
@@ -258,9 +227,7 @@ function render() {
   if (!masa) return;
   const durumYazi = masa.durum === 'bekliyor' ? 'Bekleniyor' : masa.durum === 'oynaniyor' ? 'Oynanıyor' : 'Bitti';
   $('baslik').innerHTML = 'Masa #' + masaId + ' · ' + durumYazi;
-
   koltuklariCiz();
-
   const bant = $('bant');
   if (masa.durum === 'bekliyor') {
     bant.className = 'bant';
@@ -274,7 +241,6 @@ function render() {
     bant.className = 'bant sira';
     bant.textContent = '🏆 Kazanan: ' + (k ? k.nickname : '') + ' · +' + masa.odul + ' 🪙';
   }
-
   tahtaCiz();
   yiginCiz();
   elCiz();
@@ -282,61 +248,81 @@ function render() {
   aksiyonCiz();
 }
 
+// Oyuncu rozetleri: her rengin yuvasının yanında
 function koltuklariCiz() {
-  $('koltuklar').innerHTML = masa.oyuncular.map((o, i) => {
+  $('avlar').innerHTML = masa.oyuncular.map((o, i) => {
     const sira = masa.durum === 'oynaniyor' && o.id === masa.sira_kullanici;
-    const harf = esc((o.nickname || 'A').charAt(0).toUpperCase());
-    return '<div class="koltuk' + (sira ? ' sira' : '') + '">' +
-      '<div class="avatar" style="background:' + RENK[i] + ';border-color:' + RENK[i] + '">' + harf + '</div>' +
-      '<div class="ad">' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</div>' +
-      (masa.durum === 'oynaniyor' ? '<div class="say">' + eveUlasan(i) + '/4 eve</div>' : '') +
-      '</div>';
+    const a = aci(i * 10) - 0.5, r = 64;
+    const x = ((C + r * Math.cos(a) + 16) / 132 * 100).toFixed(1);
+    const y = ((C + r * Math.sin(a) + 16) / 132 * 100).toFixed(1);
+    return '<div class="av' + (sira ? ' sira' : '') + '" style="left:' + x + '%;top:' + y + '%">' +
+      '<div class="yz" style="--r:' + RENK[i] + '">' + esc(String(o.nickname || 'A').charAt(0).toUpperCase()) + '</div>' +
+      '<b>' + esc(o.nickname) + (o.id === CFG.uid ? ' (sen)' : '') + '</b>' +
+      '<span>' + (sira ? '🃏 Sırada' : (masa.durum === 'oynaniyor' ? '🏠 ' + eveUlasan(i) + '/4' : '')) + '</span></div>';
   }).join('');
 }
 
-function tahtaCiz() {
-  const t = $('tahta');
-  t.innerHTML = '';
-  const ekle = (x, y, cls, stil, icerik) => {
-    const d = document.createElement('div');
-    d.className = cls;
-    d.style.left = yuz(x);
-    d.style.top = yuz(y);
-    if (stil) d.style.background = stil;
-    if (icerik) d.textContent = icerik;
-    t.appendChild(d);
-    return d;
-  };
+// Ahşap tahta: bir kez kurulur, bilyeler üstünde kayar
+function kurTahta(n) {
+  let s = '<svg viewBox="-16 -16 132 132"><defs><linearGradient id="odun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f0cf94"/><stop offset="1" stop-color="#c0894f"/></linearGradient>';
+  RENK.forEach((r, i) => { s += '<radialGradient id="mg' + i + '" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="' + r + '"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>'; });
+  s += '</defs>';
+  const oct = (rad) => { let p = []; for (let k = 0; k < 8; k++) { const a = (k / 8) * 2 * Math.PI + Math.PI / 8; p.push((C + rad * Math.cos(a)).toFixed(1) + ',' + (C + rad * Math.sin(a)).toFixed(1)); } return p.join(' '); };
+  s += '<polygon points="' + oct(47) + '" fill="url(#odun)" stroke="#5a3515" stroke-width="1.2" stroke-linejoin="round"/>';
+  s += '<polygon points="' + oct(44) + '" fill="none" stroke="#ffd54a" stroke-width=".5" stroke-linejoin="round"/>';
+  s += '<circle cx="50" cy="50" r="7" fill="#5a2a8a" stroke="#ffd54a" stroke-width=".7"/><circle cx="50" cy="50" r="4" fill="none" stroke="#ffd54a" stroke-width=".4" stroke-dasharray="1 1"/>';
+  for (let c = 0; c < n; c++) {
+    const m = ussu(c, 1.5);
+    s += '<circle cx="' + m[0].toFixed(1) + '" cy="' + m[1].toFixed(1) + '" r="13" fill="' + RENK[c] + '" opacity=".35" stroke="' + RENK[c] + '" stroke-width=".8"/>';
+    for (let q = 0; q < 4; q++) { const u = ussu(c, q); s += '<circle cx="' + u[0].toFixed(1) + '" cy="' + u[1].toFixed(1) + '" r="3" fill="#2a1408" opacity=".55"/>'; }
+  }
   for (let i = 0; i < 40; i++) {
     const [x, y] = halka(i);
-    const basMi = [0, 1, 2, 3].find((c) => c * 10 === i);
-    const guvenli = i % 10 === 8;
-    let cls = 'nokta';
-    if (basMi !== undefined) cls += ' bas';
-    if (guvenli) cls += ' guvenli';
-    ekle(x, y, cls, basMi !== undefined ? RENK[basMi] : null);
+    const bas = i % 10 === 0 ? i / 10 : -1;
+    if (bas >= 0 && bas < n) s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3.4" fill="' + RENK[bas] + '" stroke="#fff" stroke-width=".7"/><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="1.6" fill="#2a1408" opacity=".6"/>';
+    else s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="1.9" fill="#6b4423" stroke="#3d2410" stroke-width=".3"/>';
+    if (i % 10 === 8) s += '<text x="' + x.toFixed(1) + '" y="' + (y + .9).toFixed(1) + '" text-anchor="middle" font-size="3" fill="#ffd54a">★</text>';
   }
-  if (masa.oyuncular) {
-    masa.oyuncular.forEach((_, ci) => {
-      for (let s = 40; s <= 43; s++) {
-        const [x, y] = serit(ci, s);
-        ekle(x, y, 'nokta', RENK[ci] + 'aa');
-      }
-    });
+  for (let c = 0; c < n; c++) {
+    for (let p = 40; p <= 43; p++) { const [x, y] = serit(c, p); s += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.1" fill="' + RENK[c] + '" opacity=".75" stroke="#fff" stroke-width=".3"/>'; }
+    const [hx, hy] = serit(c, 44); s += '<circle cx="' + hx.toFixed(1) + '" cy="' + hy.toFixed(1) + '" r="3.3" fill="none" stroke="#ffd54a" stroke-width=".7"/>';
   }
+  s += '<g id="bilyeler"></g></svg>';
+  $('tahta').innerHTML = s;
+  tahtaN = n;
+}
+function tahtaCiz() {
+  const n = masa.oyuncular.length;
+  if (tahtaN !== n) kurTahta(n);
   const p = pos();
-  if (!p) return;
-  const ben = benIndex();
+  const kat = document.getElementById('bilyeler');
+  if (!p || !kat) return;
+  if (kat.childElementCount !== p.length * 4) {
+    let h = '';
+    p.forEach((_, c) => { for (let q = 0; q < 4; q++) h += '<g class="bilye" id="b' + c + '_' + q + '"><circle class="g" r="2.8" fill="url(#mg' + c + ')" stroke="#fff" stroke-width=".4"/><ellipse cx="-.9" cy="-1.1" rx=".9" ry=".6" fill="#fff" opacity=".7"/><text y=".9" text-anchor="middle" font-size="2.2" font-weight="900" fill="#fff" stroke="#0007" stroke-width=".15">' + (q + 1) + '</text></g>'; });
+    kat.innerHTML = h;
+  }
   const sec = secim ? secilebilir(secim) : [];
-  p.forEach((kollar, ci) => {
-    kollar.forEach((pp, q) => {
-      const [x, y] = bilyeKonum(ci, q, pp);
-      const acik = sec.some((b) => b.c === ci && b.q === q);
-      const d = ekle(x, y, 'bilye r' + ci + (acik ? ' sec' : ''), null, String(q + 1));
-      if (acik) d.onclick = () => bilyeSec(ci, q);
+  const grup = {};
+  p.forEach((kollar, c) => kollar.forEach((pp, q) => { const m = bilyeKonum(c, q, pp); const a = m[0].toFixed(1) + ',' + m[1].toFixed(1); (grup[a] = grup[a] || []).push([c, q, m]); }));
+  Object.keys(grup).forEach((a) => {
+    const l = grup[a], n2 = l.length;
+    l.forEach((e, i) => {
+      let dx = 0, dy = 0;
+      if (n2 > 1) { const ang = (i / n2) * Math.PI * 2; dx = Math.cos(ang) * 1.6; dy = Math.sin(ang) * 1.6; }
+      const el = document.getElementById('b' + e[0] + '_' + e[1]);
+      if (!el) return;
+      el.style.transform = 'translate(' + (e[2][0] + dx) + 'px,' + (e[2][1] + dy) + 'px)';
+      el.classList.toggle('sec', sec.some((b) => b.c === e[0] && b.q === e[1]));
     });
   });
 }
+$('tahta').addEventListener('click', (e) => {
+  const g = e.target.closest('.bilye.sec');
+  if (!g) return;
+  const k = g.id.slice(1).split('_');
+  bilyeSec(Number(k[0]), Number(k[1]));
+});
 
 function yiginCiz() {
   const n = masa.deste_sayisi != null ? masa.deste_sayisi : 0;
@@ -346,30 +332,23 @@ function yiginCiz() {
   $('deste').textContent = 'Deste: ' + n + ' kart';
 }
 
-// Kart görünümü: sayı, renk sembolü, efekt (referanstaki gibi)
+// Kart görünümü: sayı, renk sembolü, efekt
 function kartHtml(k, tikla, secili) {
   const s = Math.floor(k / 13), r = k % 13;
   const kirmizi = s === 1 || s === 2;
-  const ozel = OZEL[r];
   const etki = ETKI[r];
   const eksi = etki.indexOf('−') === 0;
-  return '<div class="kart' + (ozel ? ' ozel' : '') + (secili ? ' sec' : '') + '"' +
-    (tikla ? ' onclick="' + tikla + '"' : '') + '>' +
+  return '<div class="kart' + (OZEL[r] ? ' ozel' : '') + (secili ? ' sec' : '') + '"' + (tikla ? ' onclick="' + tikla + '"' : '') + '>' +
     '<span class="no' + (kirmizi ? ' kirmizi' : '') + '">' + RANKS[r] + '</span>' +
     '<span class="su" style="color:' + (kirmizi ? '#c62828' : '#1b1b1b') + '">' + SUITS[s] + '</span>' +
-    '<span class="etki' + (eksi ? ' eksi' : ' arti') + '">' + esc(etki) + '</span>' +
-    '<span class="alt' + (kirmizi ? ' kirmizi' : '') + '">' + RANKS[r] + '</span>' +
-    '</div>';
+    '<span class="etki' + (eksi ? ' eksi' : '') + '">' + esc(etki) + '</span>' +
+    '<span class="alt' + (kirmizi ? ' kirmizi' : '') + '">' + RANKS[r] + '</span></div>';
 }
-
 function elCiz() {
   const kartlar = masa.el || [];
   $('el').innerHTML = kartlar.map((k, i) => kartHtml(k, 'kartTikla(' + i + ')', secim && secim.idx === i)).join('');
-  if (!kartlar.length) {
-    $('ipucu').textContent = masa.durum === 'bekliyor' ? 'Oyun başlayınca kartların gelir.' : '';
-  } else {
-    $('ipucu').textContent = benimSira() ? 'Bir kart seç, sonra bilyeni tahtada seç.' : 'Sıran gelince kart seçebilirsin.';
-  }
+  if (!kartlar.length) $('ipucu').textContent = masa.durum === 'bekliyor' ? 'Oyun başlayınca kartların gelir.' : '';
+  else $('ipucu').textContent = benimSira() ? 'Bir kart seç, sonra bilyeni tahtada seç.' : 'Sıran gelince kart seçebilirsin.';
 }
 
 // ---------- Hamle akışı ----------
@@ -398,7 +377,6 @@ function secilebilir(s) {
   }
   return liste;
 }
-
 function kartTikla(idx) {
   if (!benimSira()) { bilgi('Sıra sende değil'); return; }
   const k = masa.el[idx];
@@ -406,9 +384,7 @@ function kartTikla(idx) {
   adim();
   render();
 }
-
 function secimIptal() { secim = null; render(); }
-
 function bilyeSec(c, q) {
   if (!secim) return;
   const ben = benIndex();
@@ -422,7 +398,6 @@ function bilyeSec(c, q) {
   adim();
   render();
 }
-
 function gonder(t1, t2, yon) {
   if (kilit || !secim) return;
   kilit = true;
@@ -432,7 +407,6 @@ function gonder(t1, t2, yon) {
     .catch((e) => hata(e.message))
     .finally(() => { kilit = false; secim = null; yenile(); });
 }
-
 function kartAt() {
   if (!secim || kilit) return;
   kilit = true;
@@ -440,11 +414,9 @@ function kartAt() {
     .catch((e) => hata(e.message))
     .finally(() => { kilit = false; secim = null; yenile(); });
 }
-
 function dugme(yazi, ikincil) {
   return '<button class="btn' + (ikincil ? ' ikincil' : '') + '">' + esc(yazi) + '</button>';
 }
-
 // Seçime göre sıradaki adım; tamamsa sunucuya gönderir
 function adim() {
   const s = secim;
@@ -464,7 +436,6 @@ function adim() {
   if (s.r === 0) return gonder(s.t1, 0, s.yon || 0);
   return gonder(s.t1, 0, 0);
 }
-
 function secimGoster() {
   const kutu = $('secim');
   const liste = $('secimler');
